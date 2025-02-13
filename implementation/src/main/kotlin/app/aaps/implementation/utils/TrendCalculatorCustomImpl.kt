@@ -3,6 +3,8 @@ package app.aaps.implementation.utils
 import app.aaps.core.data.iob.InMemoryGlucoseValue
 import app.aaps.core.data.model.TrendArrow
 import app.aaps.core.interfaces.aps.AutosensDataStore
+import app.aaps.core.interfaces.logging.AAPSLogger
+import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.resources.ResourceHelper
 import app.aaps.core.interfaces.utils.TrendCalculator
 import dagger.Reusable
@@ -10,7 +12,8 @@ import javax.inject.Inject
 
 @Reusable
 class TrendCalculatorCustomImpl @Inject constructor(
-    private val rh: ResourceHelper
+    private val rh: ResourceHelper,
+    private val aapsLogger: AAPSLogger
 ) : TrendCalculator {
 
     override fun getTrendArrow(autosensDataStore: AutosensDataStore): TrendArrow? {
@@ -64,6 +67,8 @@ class TrendCalculatorCustomImpl @Inject constructor(
         // 避免除以0的情況
         val slope = if (current.timestamp == lookbackStartTime) 0.0
         else (previousRecalculatedAverage - current.recalculated) / (current.timestamp - lookbackStartTime)
+
+        aapsLogger.info(LTag.APS, "lookbackStartTime: $lookbackStartTime, previousRecalculatedAverage: $previousRecalculatedAverage")
 
         val slopeByMinute = slope * 60000
 
