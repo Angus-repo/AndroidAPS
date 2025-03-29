@@ -36,8 +36,7 @@ jobs:
       - name: print dir
         id: print dir
         run: |
-          ls - l app/build/outputs/apk/full/release/
-          ls - l app/full/release
+          ls -l app/build/outputs/apk/full/release/
       - name: Rename APK with version
         run: |
           mv app/build/outputs/apk/full/release/app-full-release.apk aaps-${{ steps.extract_version.outputs.version_name }}.apk
