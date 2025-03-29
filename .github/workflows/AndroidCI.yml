@@ -28,13 +28,13 @@ jobs:
             -PkeyAlias=${{ secrets.KEY_ALIAS }} \
             -PkeyPassword=${{ secrets.KEY_PASSWORD }} \
             -PstoreFile=${{ secrets.STORE_FILE }}
-      - name: List APK files
+      - name: List APK files1
         run: |
           ls -lR app/build/outputs/apk/
-      - name: List APK files
+      - name: List APK files2
         run: |
           ls -lR app/build/outputs/apk/full
-      - name: List APK files
+      - name: List APK files3
         run: |
           ls -lR app/build/outputs/apk/full/release
       - name: Extract VERSION_NAME
