@@ -33,6 +33,11 @@ jobs:
         run: |
           VERSION=$(grep 'VERSION_NAME' app/build/generated/source/buildConfig/full/release/app/aaps/BuildConfig.java | awk -F '"' '{print $2}')
           echo "version_name=$VERSION" >> $GITHUB_OUTPUT
+      - name: print dir
+        id: print dir
+        run: |
+          ls - l app/build/outputs/apk/full/release/
+          ls - l app/full/release
       - name: Rename APK with version
         run: |
           mv app/build/outputs/apk/full/release/app-full-release.apk aaps-${{ steps.extract_version.outputs.version_name }}.apk
