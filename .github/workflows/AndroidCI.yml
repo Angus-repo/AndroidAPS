@@ -20,13 +20,13 @@ jobs:
           cache: gradle
       - name: Decode keystore
         run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore/keystore.jks
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $(pwd)/keystore/keystore.jks
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Build with Gradle
         run: |
             ./gradlew assembleFullRelease \
-            -Pandroid.injected.signing.store.file=keystore/keystore.jks \
+            -Pandroid.injected.signing.store.file=$(pwd)/keystore/keystore.jks \
             -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} \
             -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
             -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
