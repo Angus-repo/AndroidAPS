@@ -8,7 +8,6 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -24,13 +23,21 @@ jobs:
         run: chmod +x gradlew
       - name: Build with Gradle
         run: |
-          export storePassword=${{ secrets.STORE_PASSWORD }}
-          export keyAlias=${{ secrets.KEY_ALIAS }}
-          export keyPassword=${{ secrets.KEY_PASSWORD }}
-          export storeFile=${{ secrets.STORE_FILE }}
-          ./gradlew assembleFullRelease
+            ./gradlew assembleRelease \
+            -PstorePassword=${{ secrets.STORE_PASSWORD }} \
+            -PkeyAlias=${{ secrets.KEY_ALIAS }} \
+            -PkeyPassword=${{ secrets.KEY_PASSWORD }} \
+            -PstoreFile=${{ secrets.STORE_FILE }}
+      - name: Extract VERSION_NAME
+        id: extract_version
+        run: |
+          VERSION=$(grep 'VERSION_NAME' app/build/generated/source/buildConfig/full/release/app/aaps/BuildConfig.java | awk -F '"' '{print $2}')
+          echo "version_name=$VERSION" >> $GITHUB_OUTPUT
+      - name: Rename APK with version
+        run: |
+          mv app/build/outputs/apk/full/release/app-full-release.apk aaps-${{ steps.extract_version.outputs.version_name }}.apk
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: aaps
-          path: app/build/outputs/apk/full/release
+          name: aaps-${{ steps.extract_version.outputs.version_name }}.apk
+          path: aaps-${{ steps.extract_version.outputs.version_name }}.apk
