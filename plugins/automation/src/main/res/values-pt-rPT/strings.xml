@@ -77,8 +77,6 @@
     <string name="deltalabel_u">Diferença Glicose [%1$s]</string>
     <string name="currentlocation">Localização actual</string>
     <string name="location">Localização</string>
-    <string name="latitude_short">Lat.:</string>
-    <string name="longitude_short">Long.:</string>
     <string name="glucose_u">Glicose [%1$s]:</string>
     <string name="target_u">Valor alvo [%1$s]:</string>
     <string name="lastboluslabel">Último bolus atrás</string>
@@ -115,4 +113,5 @@
     <string name="time_to_bolus">Hora de fazer o bólus!\nExecute o assistente de bólus e faça o cálculo novamente.</string>
     <string name="error_setting_reminder">Erro ao configurar alarme futuro</string>
     <!--    Autotune-->
+    <!--    Steps count-->
 </resources>

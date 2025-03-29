@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener
 import android.os.Bundle
+import android.widget.TextView
 import androidx.annotation.XmlRes
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
@@ -18,10 +19,10 @@ import androidx.preference.size
 import app.aaps.R
 import app.aaps.core.data.plugin.PluginType
 import app.aaps.core.interfaces.configuration.Config
+import app.aaps.core.interfaces.overview.Overview
 import app.aaps.core.interfaces.plugin.ActivePlugin
 import app.aaps.core.interfaces.plugin.PluginBase
 import app.aaps.core.interfaces.plugin.PluginDescription
-import app.aaps.core.interfaces.profile.ProfileUtil
 import app.aaps.core.interfaces.protection.PasswordCheck
 import app.aaps.core.interfaces.protection.ProtectionCheck.ProtectionType.BIOMETRIC
 import app.aaps.core.interfaces.protection.ProtectionCheck.ProtectionType.CUSTOM_PASSWORD
@@ -69,16 +70,15 @@ class MyPreferenceFragment : PreferenceFragmentCompat(), OnSharedPreferenceChang
     @Inject lateinit var rh: ResourceHelper
     @Inject lateinit var sp: SP
     @Inject lateinit var preferences: Preferences
-    @Inject lateinit var profileUtil: ProfileUtil
     @Inject lateinit var activePlugin: ActivePlugin
     @Inject lateinit var config: Config
     @Inject lateinit var passwordCheck: PasswordCheck
-
     @Inject lateinit var automationPlugin: AutomationPlugin
     @Inject lateinit var autotunePlugin: AutotunePlugin
     @Inject lateinit var smsCommunicatorPlugin: SmsCommunicatorPlugin
     @Inject lateinit var maintenancePlugin: MaintenancePlugin
     @Inject lateinit var skinProvider: SkinProvider
+    @Inject lateinit var overview: Overview
 
     companion object {
 
@@ -122,6 +122,11 @@ class MyPreferenceFragment : PreferenceFragmentCompat(), OnSharedPreferenceChang
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        requireActivity().findViewById<TextView>(R.id.version)?.let { overview.setVersionView(it) }
+    }
+
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         (savedInstanceState ?: arguments)?.let { bundle ->
             pluginName = bundle.getString(UiInteraction.PLUGIN_NAME)
@@ -131,10 +136,8 @@ class MyPreferenceFragment : PreferenceFragmentCompat(), OnSharedPreferenceChang
         if (pluginName != null) {
             val plugin = activePlugin.getPluginsList().firstOrNull { it.javaClass.simpleName == pluginName } ?: error("Plugin not found")
             addPreferencesIfEnabled(plugin, rootKey)
-        } else if (customPreference != null) {
-            when (customPreference!!) {
-                UiInteraction.Preferences.PROTECTION -> addProtectionScreen(rootKey)
-            }
+        } else if (customPreference == UiInteraction.Preferences.PROTECTION) {
+            addProtectionScreen(rootKey)
         } else {
             addGeneralScreen(rootKey)
             addProtectionScreen(rootKey)
@@ -154,7 +157,11 @@ class MyPreferenceFragment : PreferenceFragmentCompat(), OnSharedPreferenceChang
             addAlertScreen(rootKey)
             addPreferencesIfEnabled(maintenancePlugin, rootKey)
         }
-        initSummary(preferenceScreen, pluginName != null)
+        try {
+            initSummary(preferenceScreen, pluginName != null)
+        } catch (e: Exception) {
+            throw Exception("Error in onCreatePreferences pluginName=$pluginName customPreference=$customPreference rootKey=$rootKey filter=$filter", e)
+        }
         preprocessPreferences()
         if (filter != "") updateFilterVisibility(filter, preferenceScreen)
     }
@@ -306,8 +313,8 @@ class MyPreferenceFragment : PreferenceFragmentCompat(), OnSharedPreferenceChang
         for (plugin in activePlugin.getPluginsList()) pref.key?.let { plugin.updatePreferenceSummary(pref) }
     }
 
-    private fun initSummary(p: Preference, isSinglePreference: Boolean) {
-        p.isIconSpaceReserved = false // remove extra spacing on left after migration to androidx
+    private fun initSummary(p: Preference?, isSinglePreference: Boolean) {
+        p?.isIconSpaceReserved = false // remove extra spacing on left after migration to androidx
         // expand single plugin preference by default
         if (p is PreferenceScreen && isSinglePreference && p.size > 0 && p.getPreference(0) is PreferenceCategory)
             (p.getPreference(0) as PreferenceCategory).initialExpandedChildrenCount = Int.MAX_VALUE

@@ -30,13 +30,11 @@ import androidx.core.view.MenuCompat
 import androidx.core.view.MenuProvider
 import app.aaps.activities.HistoryBrowseActivity
 import app.aaps.activities.PreferencesActivity
-import app.aaps.core.data.ue.Action
 import app.aaps.core.data.ue.Sources
 import app.aaps.core.interfaces.aps.Loop
 import app.aaps.core.interfaces.configuration.Config
+import app.aaps.core.interfaces.configuration.ConfigBuilder
 import app.aaps.core.interfaces.constraints.ConstraintsChecker
-import app.aaps.core.interfaces.logging.LTag
-import app.aaps.core.interfaces.logging.UserEntryLogger
 import app.aaps.core.interfaces.maintenance.FileListProvider
 import app.aaps.core.interfaces.notifications.Notification
 import app.aaps.core.interfaces.plugin.ActivePlugin
@@ -45,7 +43,6 @@ import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.protection.ExportPasswordDataStore
 import app.aaps.core.interfaces.protection.ProtectionCheck
 import app.aaps.core.interfaces.rx.AapsSchedulers
-import app.aaps.core.interfaces.rx.events.EventAppExit
 import app.aaps.core.interfaces.rx.events.EventAppInitialized
 import app.aaps.core.interfaces.rx.events.EventPreferenceChange
 import app.aaps.core.interfaces.rx.events.EventRebuildTabs
@@ -82,7 +79,6 @@ import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.kotlin.plusAssign
 import java.util.Locale
 import javax.inject.Inject
-import kotlin.system.exitProcess
 
 class MainActivity : DaggerAppCompatActivityWithResult() {
 
@@ -100,12 +96,13 @@ class MainActivity : DaggerAppCompatActivityWithResult() {
     @Inject lateinit var iconsProvider: IconsProvider
     @Inject lateinit var constraintChecker: ConstraintsChecker
     @Inject lateinit var signatureVerifierPlugin: SignatureVerifierPlugin
-    @Inject lateinit var uel: UserEntryLogger
+    @Inject lateinit var maintenancePlugin: MaintenancePlugin
     @Inject lateinit var profileFunction: ProfileFunction
     @Inject lateinit var fileListProvider: FileListProvider
     @Inject lateinit var cryptoUtil: CryptoUtil
     @Inject lateinit var exportPasswordDataStore: ExportPasswordDataStore
     @Inject lateinit var uiInteraction: UiInteraction
+    @Inject lateinit var configBuilder: ConfigBuilder
 
     private lateinit var actionBarDrawerToggle: ActionBarDrawerToggle
     private var pluginPreferencesMenuItem: MenuItem? = null
@@ -230,12 +227,9 @@ class MainActivity : DaggerAppCompatActivityWithResult() {
                     }
 
                     R.id.nav_exit               -> {
-                        aapsLogger.debug(LTag.CORE, "Exiting")
-                        uel.log(Action.EXIT_AAPS, Sources.Aaps)
-                        rxBus.send(EventAppExit())
                         finish()
-                        System.runFinalization()
-                        exitProcess(0)
+                        configBuilder.exitApp("Menu", Sources.Aaps, false)
+                        true
                     }
 
                     R.id.nav_plugin_preferences -> {
@@ -288,7 +282,7 @@ class MainActivity : DaggerAppCompatActivityWithResult() {
         }
         androidPermission.notifyForStoragePermission(this)
         androidPermission.notifyForBatteryOptimizationPermission(this)
-        if (!config.NSCLIENT) androidPermission.notifyForLocationPermissions(this)
+        if (!config.AAPSCLIENT) androidPermission.notifyForLocationPermissions(this)
         if (config.PUMPDRIVERS) {
             if (smsCommunicator.isEnabled())
                 androidPermission.notifyForSMSPermissions(this)
@@ -331,7 +325,7 @@ class MainActivity : DaggerAppCompatActivityWithResult() {
                 text = rh.gs(app.aaps.core.ui.R.string.aaps_directory_not_selected),
                 level = Notification.IMPORTANCE_HIGH,
                 buttonText = R.string.select,
-                action = { accessTree?.launch(null) },
+                action = { maintenancePlugin.selectAapsDirectory(this) },
                 validityCheck = { preferences.getIfExists(StringKey.AapsDirectoryUri).isNullOrEmpty() }
             )
     }
@@ -355,8 +349,8 @@ class MainActivity : DaggerAppCompatActivityWithResult() {
         if (!isProtectionCheckActive) {
             isProtectionCheckActive = true
             protectionCheck.queryProtection(this, ProtectionCheck.Protection.APPLICATION, UIRunnable { isProtectionCheckActive = false },
-                                            UIRunnable { OKDialog.show(this, "", rh.gs(R.string.authorizationfailed)) { isProtectionCheckActive = false; finish() } },
-                                            UIRunnable { OKDialog.show(this, "", rh.gs(R.string.authorizationfailed)) { isProtectionCheckActive = false; finish() } }
+                                            UIRunnable { OKDialog.show(this, "", rh.gs(R.string.authorizationfailed), true) { isProtectionCheckActive = false; finish() } },
+                                            UIRunnable { OKDialog.show(this, "", rh.gs(R.string.authorizationfailed), true) { isProtectionCheckActive = false; finish() } }
             )
         }
     }
@@ -493,7 +487,7 @@ class MainActivity : DaggerAppCompatActivityWithResult() {
         val hashes: List<String> = signatureVerifierPlugin.shortHashes()
         if (hashes.isNotEmpty()) fabricPrivacy.setUserProperty("Hash", hashes[0])
         activePlugin.activePump.let { fabricPrivacy.setUserProperty("Pump", it::class.java.simpleName) }
-        if (!config.NSCLIENT && !config.PUMPCONTROL)
+        if (!config.AAPSCLIENT && !config.PUMPCONTROL)
             activePlugin.activeAPS.let { fabricPrivacy.setUserProperty("Aps", it::class.java.simpleName) }
         activePlugin.activeBgSource.let { fabricPrivacy.setUserProperty("BgSource", it::class.java.simpleName) }
         fabricPrivacy.setUserProperty("Profile", activePlugin.activeProfileSource.javaClass.simpleName)
@@ -505,7 +499,7 @@ class MainActivity : DaggerAppCompatActivityWithResult() {
         FirebaseCrashlytics.getInstance().setCustomKey("BuildType", config.BUILD_TYPE)
         FirebaseCrashlytics.getInstance().setCustomKey("BuildFlavor", config.FLAVOR)
         FirebaseCrashlytics.getInstance().setCustomKey("Remote", remote)
-        FirebaseCrashlytics.getInstance().setCustomKey("Committed", BuildConfig.COMMITTED)
+        FirebaseCrashlytics.getInstance().setCustomKey("Committed", config.COMMITTED)
         FirebaseCrashlytics.getInstance().setCustomKey("Hash", hashes[0])
         FirebaseCrashlytics.getInstance().setCustomKey("Email", preferences.get(StringKey.MaintenanceIdentification))
     }
@@ -517,12 +511,17 @@ class MainActivity : DaggerAppCompatActivityWithResult() {
     private fun passwordResetCheck(context: Context) {
         val fh = fileListProvider.ensureExtraDirExists()?.findFile("PasswordReset")
         if (fh?.exists() == true) {
-            val sn = activePlugin.activePump.serialNumber()
-            preferences.put(StringKey.ProtectionMasterPassword, cryptoUtil.hashPassword(sn))
-            fh.delete()
-            // Also clear any stored password
-            exportPasswordDataStore.clearPasswordDataStore(context)
-            ToastUtils.okToast(context, context.getString(app.aaps.core.ui.R.string.password_set))
+            Thread {
+                // Wait for virtual pump. SN is not available immediately
+                while (activePlugin.activePump.serialNumber().isEmpty()) {
+                    Thread.sleep(100)
+                }
+                preferences.put(StringKey.ProtectionMasterPassword, cryptoUtil.hashPassword(activePlugin.activePump.serialNumber()))
+                fh.delete()
+                // Also clear any stored password
+                exportPasswordDataStore.clearPasswordDataStore(context)
+                ToastUtils.okToast(context, context.getString(app.aaps.core.ui.R.string.password_set))
+            }.start()
         }
     }
 

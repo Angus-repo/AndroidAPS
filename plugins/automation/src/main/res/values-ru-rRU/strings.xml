@@ -79,8 +79,6 @@
     <string name="deltalabel_u">Разница ГК [%1$s]</string>
     <string name="currentlocation">Текущее местоположение</string>
     <string name="location">Местоположение</string>
-    <string name="latitude_short">Широта:</string>
-    <string name="longitude_short">Долгота:</string>
     <string name="glucose_u">Гк %1$s]:</string>
     <string name="target_u">Цель [%1$s]:</string>
     <string name="lastboluslabel">Предыдущий болюс</string>
@@ -137,4 +135,8 @@
     <string name="autotune_run_with_autoswitch">Autotune выполнен и профиль переключён автоматически</string>
     <string name="autotune_run_with_error">Ошибка во время последнего выполнения Autotune</string>
     <string name="autotune_run_cancelled">Обнаружен другой запуск Autotune, выполнение отменено</string>
+    <!--    Steps count-->
+    <string name="triggerStepsCountLabel">Количество шагов</string>
+    <string name="triggerStepsCountDesc">Количество шагов за %1$s минут %2$s %3$.0f</string>
+    <string name="triggerStepsCountDropdownLabel">Продолжительность измерения</string>
 </resources>
