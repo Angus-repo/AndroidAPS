@@ -21,6 +21,9 @@ jobs:
       - name: Decode keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $(pwd)/keystore/keystore.jks
+          echo "KEY_PASSWORD=${{ secrets.STORE_PASSWORD }}"
+          echo "KEY_PASSWORD=${{ secrets.KEY_ALIAS }}"
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}"
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Build with Gradle
