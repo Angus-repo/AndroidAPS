@@ -28,7 +28,7 @@ env:
 
 jobs:
   build:
-    name: Build ${{ steps.extract_versions.outputs.wear_version_name }}
+    name: Build AAPS
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
