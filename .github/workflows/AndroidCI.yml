@@ -11,41 +11,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
-      - name: set up JDK 21
-        uses: actions/setup-java@v3
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: gradle
       - name: Decode keystore
         run: |
+          mkdir -p keystore
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $(pwd)/keystore/keystore.jks
-          echo "KEY_PASSWORD=${{ secrets.STORE_PASSWORD }}"
-          echo "KEY_PASSWORD=${{ secrets.KEY_ALIAS }}"
-          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}"
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
-      - name: Build with Gradle
+      - name: Build APKs
         run: |
-            ./gradlew assembleFullRelease \
-            -Pandroid.injected.signing.store.file=$(pwd)/keystore/keystore.jks \
-            -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
-      - name: List APK files
+          ./gradlew assembleFullRelease \
+          -Pandroid.injected.signing.store.file=$(pwd)/keystore/keystore.jks \
+          -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} \
+          -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+
+      - name: Extract App VERSION_NAME
+        id: extract_app_version
         run: |
-          ls -lR app/build/outputs/apk/
-      - name: Extract VERSION_NAME
-        id: extract_version
+          APP_VERSION=$(grep 'VERSION_NAME' app/build/generated/source/buildConfig/full/release/app/aaps/BuildConfig.java | awk -F '"' '{print $2}')
+          echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
+      - name: Extract Wear VERSION_NAME
+        id: extract_wear_version
         run: |
-          VERSION=$(grep 'VERSION_NAME' app/build/generated/source/buildConfig/full/release/app/aaps/BuildConfig.java | awk -F '"' '{print $2}')
-          echo "version_name=$VERSION" >> $GITHUB_OUTPUT
-      - name: Rename APK with version
+          WEAR_VERSION=$(grep 'VERSION_NAME' wear/build/generated/source/buildConfig/full/release/wear/BuildConfig.java | awk -F '"' '{print $2}' | head -n 1)
+          echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
+      - name: Rename APKs with version
         run: |
-          mv app/build/outputs/apk/full/release/app-full-release*.apk aaps-${{ steps.extract_version.outputs.version_name }}.apk
-      - name: Archive production artifacts
+          mv app/build/outputs/apk/full/release/*.apk aaps-${{ steps.extract_app_version.outputs.app_version_name }}.apk
+          mv wear/build/outputs/apk/full/release/*.apk aaps-wear-${{ steps.extract_wear_version.outputs.wear_version_name }}.apk
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: aaps-${{ steps.extract_version.outputs.version_name }}.apk
-          path: aaps-${{ steps.extract_version.outputs.version_name }}.apk
+          name: aaps-${{ steps.extract_app_version.outputs.app_version_name }}
+          path: |
+            aaps-${{ steps.extract_app_version.outputs.app_version_name }}.apk
+            aaps-wear-${{ steps.extract_wear_version.outputs.wear_version_name }}.apk
