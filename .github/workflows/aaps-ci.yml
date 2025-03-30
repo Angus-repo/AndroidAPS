@@ -1,4 +1,4 @@
-name: AAPS CI(${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.wear_version_name }})
+name: AAPS CI
 
 on:
   push:
@@ -28,7 +28,7 @@ env:
 
 jobs:
   build:
-    name: Build ${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.wear_version_name }}
+    name: Build ${{ steps.extract_versions.outputs.wear_version_name }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
