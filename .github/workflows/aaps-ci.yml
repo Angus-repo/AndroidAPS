@@ -1,4 +1,4 @@
-name: AAPS CI
+name: AAPS CI(${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.wear_version_name }})
 
 on:
   push:
@@ -28,6 +28,7 @@ env:
 
 jobs:
   build:
+    name: Build ${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.wear_version_name }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -91,13 +92,13 @@ jobs:
       - name: Rename APKs with version
         run: |
           VARIANT_LOWER=$(echo "${{ env.BUILD_VARIANT }}" | tr '[:upper:]' '[:lower:]')
-          mv app/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.app_version_name }}.apk
-          mv wear/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk aaps-wear-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.wear_version_name }}.apk
+          mv app/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk aaps-${{ steps.extract_versions.outputs.app_version_name }}.apk
+          mv wear/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk aaps-wear-${{ steps.extract_versions.outputs.wear_version_name }}.apk
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.app_version_name }}
+          name: aaps-${{ steps.extract_versions.outputs.app_version_name }}
           path: |
             aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.app_version_name }}.apk
             aaps-wear-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.wear_version_name }}.apk
