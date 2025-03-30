@@ -5,6 +5,8 @@ on:
     branches: [ "release-*" ]
   pull_request:
     branches: [ "release-*" ]
+env:
+  BUILD_VARIANT: Release
 
 jobs:
   build:
@@ -26,7 +28,7 @@ jobs:
         run: chmod +x gradlew
       - name: Build APKs
         run: |
-          ./gradlew assembleFullRelease \
+          ./gradlew assembleFull${{ env.BUILD_VARIANT }} \
           -Pandroid.injected.signing.store.file=$(pwd)/keystore/keystore.jks \
           -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} \
           -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
@@ -40,7 +42,7 @@ jobs:
       - name: Extract Wear VERSION_NAME
         id: extract_wear_version
         run: |
-          WEAR_VERSION=$(grep 'VERSION_NAME' wear/build/generated/source/buildConfig/full/release/wear/BuildConfig.java | awk -F '"' '{print $2}' | head -n 1)
+          WEAR_VERSION=$(grep 'VERSION_NAME' wear/build/generated/source/buildConfig/full/release/app/wear/BuildConfig.java | awk -F '"' '{print $2}' | head -n 1)
           echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
       - name: Rename APKs with version
         run: |
@@ -49,7 +51,7 @@ jobs:
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: aaps-${{ steps.extract_app_version.outputs.app_version_name }}
+          name: aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_app_version.outputs.app_version_name }}
           path: |
-            aaps-${{ steps.extract_app_version.outputs.app_version_name }}.apk
-            aaps-wear-${{ steps.extract_wear_version.outputs.wear_version_name }}.apk
+            aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_app_version.outputs.app_version_name }}.apk
+            aaps-wear-${{ env.BUILD_VARIANT }}-${{ steps.extract_wear_version.outputs.wear_version_name }}.apk
