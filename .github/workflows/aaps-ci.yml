@@ -100,5 +100,5 @@ jobs:
         with:
           name: aaps-${{ steps.extract_versions.outputs.app_version_name }}
           path: |
-            aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.app_version_name }}.apk
-            aaps-wear-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.wear_version_name }}.apk
+            aaps-${{ steps.extract_versions.outputs.app_version_name }}.apk
+            aaps-wear-${{ steps.extract_versions.outputs.wear_version_name }}.apk
