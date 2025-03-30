@@ -67,6 +67,19 @@ jobs:
           echo "FLAVOR: $VARIANT_FLAVOR"
           echo "TYPE: $VARIANT_TYPE"
 
+      - name: Extract VERSION_NAME for App and Wear
+        id: extract_versions
+        run: |
+          VARIANT_LOWER=$(echo "${{ env.BUILD_VARIANT }}" | tr '[:upper:]' '[:lower:]')
+          APP_VERSION=$(find app/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
+          WEAR_VERSION=$(find wear/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
+
+          echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
+
+          echo "APP_VERSION: $APP_VERSION"
+          echo "WEAR_VERSION: $WEAR_VERSION"
+
       - name: Build APKs
         run: |
           ./gradlew assemble${{ env.BUILD_VARIANT }} \
@@ -74,19 +87,6 @@ jobs:
           -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} \
           -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
           -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
-
-      - name: Extract VERSION_NAME for App and Wear
-        id: extract_versions
-        run: |
-          VARIANT_LOWER=$(echo "${{ env.BUILD_VARIANT }}" | tr '[:upper:]' '[:lower:]')
-          APP_VERSION=$(find app/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
-          WEAR_VERSION=$(find wear/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
-  
-          echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
-          echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
-          
-          echo "APP_VERSION: $APP_VERSION"
-          echo "WEAR_VERSION: $WEAR_VERSION"
 
       - name: Rename APKs with version
         run: |
