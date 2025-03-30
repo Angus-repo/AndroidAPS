@@ -79,14 +79,14 @@ jobs:
         id: extract_versions
         run: |
           VARIANT_LOWER=$(echo "${{ env.BUILD_VARIANT }}" | tr '[:upper:]' '[:lower:]')
-          APP_VERSION=$(grep 'VERSION_NAME' app/build/generated/source/buildConfig/full/debug/app/aaps/BuildConfig.java | awk -F '"' '{print $2}')
-          WEAR_VERSION=$(grep 'VERSION_NAME' wear/build/generated/source/buildConfig/full/debug/app/wear/BuildConfig.java | awk -F '"' '{print $2}' | head -n 1)
-          
+          APP_VERSION=$(find app/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
+          WEAR_VERSION=$(find wear/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
+  
           echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
           echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
           
-          echo "App VERSION_NAME: $APP_VERSION"
-          echo "Wear VERSION_NAME: $WEAR_VERSION"
+          echo "APP_VERSION: $APP_VERSION"
+          echo "WEAR_VERSION: $WEAR_VERSION"
 
       - name: Rename APKs with version
         run: |
