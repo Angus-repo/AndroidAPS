@@ -56,6 +56,17 @@ jobs:
           fi
           echo "BUILD_VARIANT=$BUILD_VARIANT" >> $GITHUB_ENV
           echo "Selected BUILD_VARIANT: $BUILD_VARIANT"
+          
+          # Split into FLAVOR and TYPE (release/debug)
+          VARIANT_FLAVOR=$(echo "$BUILD_VARIANT" | sed -E 's/(Release|Debug)$//' | tr '[:upper:]' '[:lower:]')
+          VARIANT_TYPE=$(echo "$BUILD_VARIANT" | grep -oE '(Release|Debug)$' | tr '[:upper:]' '[:lower:]')
+      
+          echo "VARIANT_FLAVOR=$VARIANT_FLAVOR" >> $GITHUB_ENV
+          echo "VARIANT_TYPE=$VARIANT_TYPE" >> $GITHUB_ENV
+      
+          echo "Selected BUILD_VARIANT: $BUILD_VARIANT"
+          echo "FLAVOR: $VARIANT_FLAVOR"
+          echo "TYPE: $VARIANT_TYPE"
 
       - name: Build APKs
         run: |
@@ -81,8 +92,8 @@ jobs:
       - name: Rename APKs with version
         run: |
           VARIANT_LOWER=$(echo "${{ env.BUILD_VARIANT }}" | tr '[:upper:]' '[:lower:]')
-          mv app/build/outputs/apk/$VARIANT_LOWER/*.apk aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.app_version_name }}.apk
-          mv wear/build/outputs/apk/$VARIANT_LOWER/*.apk aaps-wear-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.wear_version_name }}.apk
+          mv app/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.app_version_name }}.apk
+          mv wear/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk aaps-wear-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.wear_version_name }}.apk
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
