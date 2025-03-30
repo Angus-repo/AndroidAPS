@@ -64,7 +64,6 @@ jobs:
           echo "VARIANT_FLAVOR=$VARIANT_FLAVOR" >> $GITHUB_ENV
           echo "VARIANT_TYPE=$VARIANT_TYPE" >> $GITHUB_ENV
       
-          echo "Selected BUILD_VARIANT: $BUILD_VARIANT"
           echo "FLAVOR: $VARIANT_FLAVOR"
           echo "TYPE: $VARIANT_TYPE"
 
@@ -80,8 +79,8 @@ jobs:
         id: extract_versions
         run: |
           VARIANT_LOWER=$(echo "${{ env.BUILD_VARIANT }}" | tr '[:upper:]' '[:lower:]')
-          APP_VERSION=$(grep 'VERSION_NAME' app/build/generated/source/buildConfig/$VARIANT_LOWER/app/aaps/BuildConfig.java | awk -F '"' '{print $2}')
-          WEAR_VERSION=$(grep 'VERSION_NAME' wear/build/generated/source/buildConfig/$VARIANT_LOWER/app/wear/BuildConfig.java | awk -F '"' '{print $2}' | head -n 1)
+          APP_VERSION=$(grep 'VERSION_NAME' app/build/generated/source/buildConfig/full/debug/app/aaps/BuildConfig.java | awk -F '"' '{print $2}')
+          WEAR_VERSION=$(grep 'VERSION_NAME' wear/build/generated/source/buildConfig/full/debug/app/wear/BuildConfig.java | awk -F '"' '{print $2}' | head -n 1)
           
           echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
           echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
