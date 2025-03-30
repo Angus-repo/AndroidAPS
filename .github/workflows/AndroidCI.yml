@@ -2,9 +2,9 @@ name: Android CI
 
 on:
   push:
-    branches: [ "release-*" ]
+    branches: ["release-*"]
   pull_request:
-    branches: [ "release-*" ]
+    branches: ["release-*"]
     types: [opened, synchronize, reopened]
   workflow_dispatch:
     inputs:
@@ -22,6 +22,7 @@ on:
           - aapsclient2Debug
           - pumpcontrolRelease
           - pumpcontrolDebug
+
 env:
   DEFAULT_BUILD_VARIANT: FullRelease
 
@@ -48,10 +49,11 @@ jobs:
       - name: Set BUILD_VARIANT (default if empty)
         id: set_build_variant
         run: |
-          BUILD_VARIANT=${{ DEFAULT_BUILD_VARIANT }}
           if [[ -n "${{ github.event.inputs.buildVariant }}" ]]; then
             BUILD_VARIANT="${{ github.event.inputs.buildVariant }}"
           else
+            BUILD_VARIANT="${{ env.DEFAULT_BUILD_VARIANT }}"
+          fi
           echo "BUILD_VARIANT=$BUILD_VARIANT" >> $GITHUB_ENV
           echo "Selected BUILD_VARIANT: $BUILD_VARIANT"
 
@@ -66,8 +68,9 @@ jobs:
       - name: Extract VERSION_NAME for App and Wear
         id: extract_versions
         run: |
-          APP_VERSION=$(grep 'VERSION_NAME' app/build/generated/source/buildConfig/full/release/app/aaps/BuildConfig.java | awk -F '"' '{print $2}')
-          WEAR_VERSION=$(grep 'VERSION_NAME' wear/build/generated/source/buildConfig/full/release/app/wear/BuildConfig.java | awk -F '"' '{print $2}' | head -n 1)
+          VARIANT_LOWER=$(echo "${{ env.BUILD_VARIANT }}" | tr '[:upper:]' '[:lower:]')
+          APP_VERSION=$(grep 'VERSION_NAME' app/build/generated/source/buildConfig/$VARIANT_LOWER/app/aaps/BuildConfig.java | awk -F '"' '{print $2}')
+          WEAR_VERSION=$(grep 'VERSION_NAME' wear/build/generated/source/buildConfig/$VARIANT_LOWER/app/wear/BuildConfig.java | awk -F '"' '{print $2}' | head -n 1)
           
           echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
           echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
@@ -77,13 +80,14 @@ jobs:
 
       - name: Rename APKs with version
         run: |
-          mv app/build/outputs/apk/full/release/*.apk aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_app_version.outputs.app_version_name }}.apk
-          mv wear/build/outputs/apk/full/release/*.apk aaps-wear-${{ env.BUILD_VARIANT }}-${{ steps.extract_wear_version.outputs.wear_version_name }}.apk
+          VARIANT_LOWER=$(echo "${{ env.BUILD_VARIANT }}" | tr '[:upper:]' '[:lower:]')
+          mv app/build/outputs/apk/$VARIANT_LOWER/*.apk aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.app_version_name }}.apk
+          mv wear/build/outputs/apk/$VARIANT_LOWER/*.apk aaps-wear-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.wear_version_name }}.apk
 
       - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_app_version.outputs.app_version_name }}
+          name: aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.app_version_name }}
           path: |
-            aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_app_version.outputs.app_version_name }}.apk
-            aaps-wear-${{ env.BUILD_VARIANT }}-${{ steps.extract_wear_version.outputs.wear_version_name }}.apk
+            aaps-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.app_version_name }}.apk
+            aaps-wear-${{ env.BUILD_VARIANT }}-${{ steps.extract_versions.outputs.wear_version_name }}.apk
