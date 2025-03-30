@@ -1,11 +1,11 @@
-name: Android CI
+name: AAPS CI
 
 on:
   push:
-    branches: ["release-*"]
+    branches: ["main", "master"]
   pull_request:
-    branches: ["release-*"]
-    types: [opened, synchronize, reopened]
+    branches: ["main", "master", "release-*"]
+    types: [synchronize]
   workflow_dispatch:
     inputs:
       buildVariant:
@@ -64,8 +64,16 @@ jobs:
           echo "VARIANT_FLAVOR=$VARIANT_FLAVOR" >> $GITHUB_ENV
           echo "VARIANT_TYPE=$VARIANT_TYPE" >> $GITHUB_ENV
       
-          echo "FLAVOR: $VARIANT_FLAVOR"
-          echo "TYPE: $VARIANT_TYPE"
+          echo "VARIANT_FLAVOR: $VARIANT_FLAVOR"
+          echo "VARIANT_TYPE: $VARIANT_TYPE"
+
+      - name: Build APKs
+        run: |
+          ./gradlew assemble${{ env.BUILD_VARIANT }} \
+          -Pandroid.injected.signing.store.file=$(pwd)/keystore/keystore.jks \
+          -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} \
+          -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
       - name: Extract VERSION_NAME for App and Wear
         id: extract_versions
@@ -79,14 +87,6 @@ jobs:
 
           echo "APP_VERSION: $APP_VERSION"
           echo "WEAR_VERSION: $WEAR_VERSION"
-
-      - name: Build APKs
-        run: |
-          ./gradlew assemble${{ env.BUILD_VARIANT }} \
-          -Pandroid.injected.signing.store.file=$(pwd)/keystore/keystore.jks \
-          -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} \
-          -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
       - name: Rename APKs with version
         run: |
