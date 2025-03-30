@@ -6,18 +6,26 @@ on:
   pull_request:
     branches: [ "release-*" ]
     types: [opened, synchronize, reopened]
-
-# fullRelease / fullDebuge
-# aapsclientRelease / aapsclientDebug
-# aapsclient2Release / aapsclient2Debug
-# pumpcontrolRelease / pumpcontrolDebug
-env:
-  BUILD_VARIANT: FullRelease
+  workflow_dispatch:
+    inputs:
+      buildVariant:
+        description: 'Select Build Variant'
+        required: true
+        default: 'FullRelease'
+        type: choice
+        options:
+          - FullRelease
+          - FullDebug
+          - aapsclientRelease
+          - aapsclientDebug
+          - aapsclient2Release
+          - aapsclient2Debug
+          - pumpcontrolRelease
+          - pumpcontrolDebug
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
       - name: Set up JDK 21
@@ -26,12 +34,15 @@ jobs:
           java-version: '21'
           distribution: 'temurin'
           cache: gradle
+
       - name: Decode keystore
         run: |
           mkdir -p keystore
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $(pwd)/keystore/keystore.jks
+
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
       - name: Build APKs
         run: |
           ./gradlew assemble${{ env.BUILD_VARIANT }} \
@@ -40,16 +51,17 @@ jobs:
           -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
           -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
 
-      - name: Extract App VERSION_NAME
-        id: extract_app_version
+      - name: Extract VERSION_NAME for App and Wear
+        id: extract_versions
         run: |
           APP_VERSION=$(grep 'VERSION_NAME' app/build/generated/source/buildConfig/full/release/app/aaps/BuildConfig.java | awk -F '"' '{print $2}')
-          echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
-      - name: Extract Wear VERSION_NAME
-        id: extract_wear_version
-        run: |
           WEAR_VERSION=$(grep 'VERSION_NAME' wear/build/generated/source/buildConfig/full/release/app/wear/BuildConfig.java | awk -F '"' '{print $2}' | head -n 1)
+          
+          echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
           echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
+          
+          echo "App VERSION_NAME: $APP_VERSION"
+          echo "Wear VERSION_NAME: $WEAR_VERSION"
 
       - name: Rename APKs with version
         run: |
