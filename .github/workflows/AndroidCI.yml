@@ -22,6 +22,8 @@ on:
           - aapsclient2Debug
           - pumpcontrolRelease
           - pumpcontrolDebug
+env:
+  DEFAULT_BUILD_VARIANT: FullRelease
 
 jobs:
   build:
@@ -42,6 +44,16 @@ jobs:
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
+
+      - name: Set BUILD_VARIANT (default if empty)
+        id: set_build_variant
+        run: |
+          BUILD_VARIANT=${{ DEFAULT_BUILD_VARIANT }}
+          if [[ -n "${{ github.event.inputs.buildVariant }}" ]]; then
+            BUILD_VARIANT="${{ github.event.inputs.buildVariant }}"
+          else
+          echo "BUILD_VARIANT=$BUILD_VARIANT" >> $GITHUB_ENV
+          echo "Selected BUILD_VARIANT: $BUILD_VARIANT"
 
       - name: Build APKs
         run: |
