@@ -1,0 +1,134 @@
+name: AAPS CI
+
+on:
+  workflow_dispatch:
+    inputs:
+      buildVariant:
+        description: 'Select Build Variant'
+        required: true
+        default: 'FullRelease'
+        type: choice
+        options:
+          - FullRelease
+          - FullDebug
+          - aapsclientRelease
+          - aapsclientDebug
+          - aapsclient2Release
+          - aapsclient2Debug
+          - pumpcontrolRelease
+          - pumpcontrolDebug
+
+env:
+  DEFAULT_BUILD_VARIANT: FullRelease
+
+jobs:
+  build:
+    name: Build AAPS
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Secrets
+        run: |
+          MISSING=0
+          if [ -z "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "❌ Missing secret: KEYSTORE_BASE64"
+            MISSING=1
+          fi
+          if [ -z "${{ secrets.STORE_PASSWORD }}" ]; then
+            echo "❌ Missing secret: STORE_PASSWORD"
+            MISSING=1
+          fi
+          if [ -z "${{ secrets.KEY_ALIAS }}" ]; then
+            echo "❌ Missing secret: KEY_ALIAS"
+            MISSING=1
+          fi
+          if [ -z "${{ secrets.KEY_PASSWORD }}" ]; then
+            echo "❌ Missing secret: KEY_PASSWORD"
+            MISSING=1
+          fi
+          if [ "$MISSING" -eq 1 ]; then
+            echo "🛑 Required secret(s) missing. Failing the build."
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Decode keystore
+        run: |
+          mkdir -p keystore
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > $(pwd)/keystore/keystore.jks
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Set BUILD_VARIANT (default if empty)
+        id: set_build_variant
+        run: |
+          if [[ -n "${{ github.event.inputs.buildVariant }}" ]]; then
+            BUILD_VARIANT="${{ github.event.inputs.buildVariant }}"
+          else
+            BUILD_VARIANT="${{ env.DEFAULT_BUILD_VARIANT }}"
+          fi
+          echo "BUILD_VARIANT=$BUILD_VARIANT" >> $GITHUB_ENV
+          echo "Selected BUILD_VARIANT: $BUILD_VARIANT"
+          
+          # Split into FLAVOR and TYPE (release/debug)
+          VARIANT_FLAVOR=$(echo "$BUILD_VARIANT" | sed -E 's/(Release|Debug)$//' | tr '[:upper:]' '[:lower:]')
+          VARIANT_TYPE=$(echo "$BUILD_VARIANT" | grep -oE '(Release|Debug)$' | tr '[:upper:]' '[:lower:]')
+      
+          echo "VARIANT_FLAVOR=$VARIANT_FLAVOR" >> $GITHUB_ENV
+          echo "VARIANT_TYPE=$VARIANT_TYPE" >> $GITHUB_ENV
+      
+          VERSION_SUFFIX=""
+          if [[ "$VARIANT_TYPE" == "debug" ]]; then
+            VERSION_SUFFIX="-debug"
+          fi
+          echo "VERSION_SUFFIX=$VERSION_SUFFIX" >> $GITHUB_ENV
+
+          echo "VARIANT_FLAVOR: $VARIANT_FLAVOR"
+          echo "VARIANT_TYPE: $VARIANT_TYPE"
+          echo "VERSION_SUFFIX: $VERSION_SUFFIX"
+
+      - name: Build APKs
+        run: |
+          ./gradlew assemble${{ env.BUILD_VARIANT }} \
+          -Pandroid.injected.signing.store.file=$(pwd)/keystore/keystore.jks \
+          -Pandroid.injected.signing.store.password=${{ secrets.STORE_PASSWORD }} \
+          -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
+          -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+
+      - name: Extract VERSION_NAME for App and Wear
+        id: extract_versions
+        run: |
+          APP_VERSION=$(find app/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
+          WEAR_VERSION=$(find wear/build/generated/source/buildConfig -name 'BuildConfig.java' -exec grep 'VERSION_NAME' {} \; | head -1 | awk -F '"' '{print $2}')
+
+          APP_VERSION="$APP_VERSION${VERSION_SUFFIX}"
+          WEAR_VERSION="$WEAR_VERSION${VERSION_SUFFIX}"
+          
+          echo "app_version_name=$APP_VERSION" >> $GITHUB_OUTPUT
+          echo "wear_version_name=$WEAR_VERSION" >> $GITHUB_OUTPUT
+
+          echo "APP_VERSION: $APP_VERSION"
+          echo "WEAR_VERSION: $WEAR_VERSION"
+
+      - name: Rename APKs with version
+        run: |
+          mv app/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk \
+            aaps-${{ steps.extract_versions.outputs.app_version_name }}.apk
+
+          mv wear/build/outputs/apk/${{ env.VARIANT_FLAVOR }}/${{ env.VARIANT_TYPE }}/*.apk \
+            aaps-wear-${{ steps.extract_versions.outputs.wear_version_name }}.apk
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: aaps-${{ steps.extract_versions.outputs.app_version_name }}
+          path: |
+            aaps-${{ steps.extract_versions.outputs.app_version_name }}.apk
+            aaps-wear-${{ steps.extract_versions.outputs.wear_version_name }}.apk
