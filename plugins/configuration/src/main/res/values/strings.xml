@@ -178,4 +178,9 @@
     <string name="reset_aps_results">Reset APS results</string>
     <string name="error_accessing_filesystem_select_aaps_directory_properly">Error accessing filesystem. Select AAPS directory properly.</string>
 
+    <!-- Storage source selection -->
+    <string name="select_storage_source">Select storage source</string>
+    <string name="source_local_directory">Phone directory</string>
+    <string name="source_google_drive">Google Drive</string>
+    <string name="google_drive_not_implemented">Google Drive integration not implemented yet</string>
 </resources>

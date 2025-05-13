@@ -52,12 +52,15 @@ open class DaggerAppCompatActivityWithResult : DaggerAppCompatActivity() {
         })
 
         accessTree = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+            // 僅處理手機目錄選擇，Google Drive 另有流程
             uri?.let {
-                contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                preferences.put(StringKey.AapsDirectoryUri, uri.toString())
-                rxBus.send(EventAAPSDirectorySelected(uri.path ?: "UNKNOWN"))
+                // handleDirectorySelected(it)
+                contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                preferences.put(StringKey.AapsDirectoryUri, it.toString())
+                rxBus.send(EventAAPSDirectorySelected(it.path ?: "UNKNOWN"))
             }
         }
+
         callForPrefFile = registerForActivityResult(PrefsFileContract()) {
             // Do not pass full file through intent. It crash on large file
             // it?.let {
@@ -91,6 +94,46 @@ open class DaggerAppCompatActivityWithResult : DaggerAppCompatActivity() {
             }
             updateButtons()
         }
+    }
+
+    /**
+     * 彈出來源選擇 Dialog，讓使用者選擇「手機目錄」或「Google Drive」
+     * 若選擇手機目錄，則啟動 accessTree
+     * 若選擇 Google Drive，則檢查/授權並處理 Google Drive
+     */
+    open fun showDirectorySourceDialog() {
+        val options = arrayOf(
+            rh.gs(app.aaps.plugins.configuration.R.string.source_local_directory),
+            rh.gs(app.aaps.plugins.configuration.R.string.source_google_drive)
+        )
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle(rh.gs(app.aaps.plugins.configuration.R.string.select_storage_source))
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> accessTree?.launch(null)
+                    1 -> ToastUtils.infoToast(this, rh.gs(app.aaps.plugins.configuration.R.string.google_drive_not_implemented))//handleGoogleDriveDirectory()
+                }
+            }
+            .show()
+    }
+
+    /**
+     * 處理手機目錄選擇完成後的邏輯
+     */
+    open fun handleDirectorySelected(uri: Uri) {
+        contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        preferences.put(StringKey.AapsDirectoryUri, uri.toString())
+        rxBus.send(EventAAPSDirectorySelected(uri.path ?: "UNKNOWN"))
+    }
+
+    /**
+     * Google Drive 授權與目錄選擇流程（僅預留，需串接 Google Drive API）
+     */
+    open fun handleGoogleDriveDirectory() {
+        // TODO: 檢查 refresh token 是否存在，若無則啟動授權流程
+        // 若授權成功，儲存 refresh token，並記錄選擇為 Google Drive
+        // 若授權失敗，顯示錯誤訊息
+        ToastUtils.infoToast(this, rh.gs(app.aaps.plugins.configuration.R.string.google_drive_not_implemented))
     }
 
     override fun onDestroy() {

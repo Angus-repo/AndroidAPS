@@ -168,4 +168,9 @@
     <string name="metadata_format_other">未知的匯出格式</string>
     <string name="reset_aps_results">重置APS結果</string>
     <string name="error_accessing_filesystem_select_aaps_directory_properly">無法存取檔案系統。請正確選擇 AAPS 目錄。</string>
+        <!-- Storage source selection -->
+    <string name="select_storage_source">選擇儲存來源</string>
+    <string name="source_local_directory">手機目錄</string>
+    <string name="source_google_drive">Google Drive</string>
+    <string name="google_drive_not_implemented">Google Drive 尚未實作</string>
 </resources>

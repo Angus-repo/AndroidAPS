@@ -238,7 +238,7 @@ class MaintenancePlugin @Inject constructor(
     fun selectAapsDirectory(activity: DaggerAppCompatActivityWithResult) {
         try {
             uel.log(Action.SELECT_DIRECTORY, Sources.Maintenance)
-            activity.accessTree?.launch(null)
+            activity.showDirectorySourceDialog()
         } catch (_: Exception) {
             ToastUtils.errorToast(activity, "Unable to launch activity. This is an Android issue")
         }
