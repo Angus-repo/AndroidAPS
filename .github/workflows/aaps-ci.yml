@@ -6,11 +6,11 @@ on:
       buildVariant:
         description: 'Select Build Variant'
         required: true
-        default: 'FullRelease'
+        default: 'fullRelease'
         type: choice
         options:
-          - FullRelease
-          - FullDebug
+          - fullRelease
+          - fullDebug
           - aapsclientRelease
           - aapsclientDebug
           - aapsclient2Release
@@ -175,20 +175,11 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Map JDK version by app version
-        run: |
-          case "$VERSION" in
-            3.1.0.3) JDK_VERSION="17" ;;
-            3.2.0.4) JDK_VERSION="19" ;;
-            3.3.*)   JDK_VERSION="21" ;;
-            *) echo "❌ Unsupported app version: $VERSION"; exit 1 ;;
-          esac
-          echo "JDK_VERSION=$JDK_VERSION" >> $GITHUB_ENV
-
-      - name: Set up JDK ${{ env.JDK_VERSION }}
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          java-version: ${{ env.JDK_VERSION }}
+          # When upgrading the JDK, please update this section accordingly as well.
+          java-version: 21
           distribution: 'temurin'
           cache: gradle
 
