@@ -175,20 +175,56 @@ jobs:
           fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
 
-      - name: Set up JDK
+      - name: Map JDK version by app version
+        run: |
+          case "$VERSION" in
+            2.6.2) JDK_VERSION="11" ;;
+            2.8.2.1) JDK_VERSION="11" ;;
+            3.1.0.3) JDK_VERSION="17" ;;
+            3.2.0.4) JDK_VERSION="19" ;;
+            3.3.*) JDK_VERSION="21" ;;
+            *)
+              echo "❌ Unsupported app version: $VERSION"
+              exit 1
+              ;;
+          esac
+          echo "JDK_VERSION=$JDK_VERSION" >> $GITHUB_ENV
+          echo "📦 App Version: $VERSION → JDK Version: $JDK_VERSION"
+          echo "jdk_version=$JDK_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Set up JDK ${{ env.JDK_VERSION }}
         uses: actions/setup-java@v4
         with:
-          # When upgrading the JDK, please update this section accordingly as well.
-          java-version: 21
+          java-version: ${{ env.JDK_VERSION }}
           distribution: 'temurin'
           cache: gradle
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: Init empty command
+        run: echo "INIT_SCRIPT=" >> $GITHUB_ENV
+
+      - name: Conditionally generate Gradle mirror init script
+        if: env.MAVEN_MIRRORS != ''
+        run: |
+          echo "Generating gradle-mirror.init ..."
+          echo 'allprojects {' > gradle-mirror.init
+          echo '    repositories {' >> gradle-mirror.init
+
+          IFS=',' read -ra URLS <<< "$MAVEN_MIRRORS"
+          for u in "${URLS[@]}"; do
+            echo "        maven { url \"$u\" }" >> gradle-mirror.init
+          done
+
+          echo '    }' >> gradle-mirror.init
+          echo '}' >> gradle-mirror.init
+
+          echo "INIT_SCRIPT=--init-script gradle-mirror.init" >> $GITHUB_ENV
+
       - name: Build APKs
         run: |
-          ./gradlew assemble${{ env.BUILD_VARIANT }} \
+          ./gradlew ${{env.INIT_SCRIPT}} assemble${{ env.BUILD_VARIANT }} \
             -Pandroid.injected.signing.store.file="$RUNNER_TEMP/keystore/keystore.jks" \
             -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
