@@ -206,7 +206,9 @@ jobs:
         run: echo "INIT_SCRIPT=" >> $GITHUB_ENV
 
       - name: Conditionally generate Gradle mirror init script
-        if: env.MAVEN_MIRRORS != ''
+        if: ${{ vars.MAVEN_MIRRORS != '' }}
+        env:
+          MAVEN_MIRRORS: ${{ vars.MAVEN_MIRRORS }}
         run: |
           echo "Generating gradle-mirror.init ..."
           echo 'allprojects {' > gradle-mirror.init
