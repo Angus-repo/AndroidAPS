@@ -213,7 +213,9 @@ jobs:
           echo "Generating gradle-mirror.init ..."
           echo 'allprojects {' > gradle-mirror.init
           echo '    repositories {' >> gradle-mirror.init
-
+          echo '        google()' >> gradle-mirror.init
+          echo '        jcenter()' >> gradle-mirror.init
+          echo '        maven { url "https://plugins.gradle.org/m2/" }' >> gradle-mirror.init
           IFS=',' read -ra URLS <<< "$MAVEN_MIRRORS"
           for u in "${URLS[@]}"; do
             echo "        maven { url \"$u\" }" >> gradle-mirror.init
@@ -226,7 +228,7 @@ jobs:
 
       - name: Build APKs
         run: |
-          ./gradlew ${{env.INIT_SCRIPT}} assemble${{ env.BUILD_VARIANT }} \
+          ./gradlew ${{env.INIT_SCRIPT}} -Pandroid.ndkVersion=27.2.12479018 assemble${{ env.BUILD_VARIANT }} \
             -Pandroid.injected.signing.store.file="$RUNNER_TEMP/keystore/keystore.jks" \
             -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
             -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
