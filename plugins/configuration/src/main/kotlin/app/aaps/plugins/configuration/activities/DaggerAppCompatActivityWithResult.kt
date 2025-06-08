@@ -60,7 +60,10 @@ open class DaggerAppCompatActivityWithResult : DaggerAppCompatActivity() {
         })
 
         accessTree = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-            val storageType = preferences.get(STORAGE_TYPE_KEY, STORAGE_TYPE_LOCAL)
+            val storageType = preferences.get(
+                app.aaps.core.keys.SimpleString2PreferenceKey(STORAGE_TYPE_KEY, STORAGE_TYPE_LOCAL),
+                ""
+            )
             if (storageType == STORAGE_TYPE_LOCAL) {
                 uri?.let {
                     handleDirectorySelected(it)
@@ -118,11 +121,19 @@ open class DaggerAppCompatActivityWithResult : DaggerAppCompatActivity() {
             .setItems(options) { _, which ->
                 when (which) {
                     0 -> {
-                        preferences.put(STORAGE_TYPE_KEY, STORAGE_TYPE_LOCAL)
+                        preferences.put(
+                            app.aaps.core.keys.SimpleString2PreferenceKey(STORAGE_TYPE_KEY, STORAGE_TYPE_LOCAL),
+                            "",
+                            STORAGE_TYPE_LOCAL
+                        )
                         accessTree?.launch(null)
                     }
                     1 -> {
-                        preferences.put(STORAGE_TYPE_KEY, STORAGE_TYPE_GOOGLE_DRIVE)
+                        preferences.put(
+                            app.aaps.core.keys.SimpleString2PreferenceKey(STORAGE_TYPE_KEY, STORAGE_TYPE_GOOGLE_DRIVE),
+                            "",
+                            STORAGE_TYPE_GOOGLE_DRIVE
+                        )
                         handleGoogleDriveDirectory()
                     }
                 }
@@ -147,57 +158,57 @@ open class DaggerAppCompatActivityWithResult : DaggerAppCompatActivity() {
         // 需在 build.gradle 加入 implementation 'net.openid:appauth:0.11.1'
         // 並在 Google Cloud Console 註冊 Web client id，redirect_uri 設為 http://127.0.0.1:8080/
 
-        val serviceConfig = net.openid.appauth.AuthorizationServiceConfiguration(
-            Uri.parse("https://accounts.google.com/o/oauth2/v2/auth"),
-            Uri.parse("https://oauth2.googleapis.com/token")
-        )
-        val clientId = "705061051276-5ssikkg2ag39l7hj9t63saq549n3s2n5.apps.googleusercontent.com"
-        val redirectUri = Uri.parse("http://127.0.0.1:8080/")
-        val scope = "https://www.googleapis.com/auth/drive.file"
-
-        val authRequest = net.openid.appauth.AuthorizationRequest.Builder(
-            serviceConfig,
-            clientId,
-            net.openid.appauth.ResponseTypeValues.CODE,
-            redirectUri
-        )
-            .setScope(scope)
-            .build()
-
-        if (authService == null) authService = net.openid.appauth.AuthorizationService(this)
-        val authIntent = authService!!.getAuthorizationRequestIntent(authRequest)
-        startActivityForResult(authIntent, 9002)
-        // 請在 onActivityResult 處理授權結果
-    // AppAuth 物件
-    private var authService: net.openid.appauth.AuthorizationService? = null
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        if (requestCode == 9002) {
-            val resp = net.openid.appauth.AuthorizationResponse.fromIntent(data!!)
-            val ex = net.openid.appauth.AuthorizationException.fromIntent(data)
-            if (resp != null) {
-                val tokenRequest = resp.createTokenExchangeRequest()
-                authService?.performTokenRequest(tokenRequest) { response, exception ->
-                    if (response != null) {
-                        val refreshToken = response.refreshToken
-                        if (refreshToken != null) {
-                            preferences.put("GoogleDriveRefreshToken", refreshToken)
-                            runOnUiThread {
-                                ToastUtils.infoToast(this, "Google Drive 授權成功，refresh token 已取得")
-                            }
-                        }
-                    } else {
-                        runOnUiThread {
-                            ToastUtils.errorToast(this, "Google Drive 授權失敗")
-                        }
-                    }
-                }
-            } else {
-                ToastUtils.errorToast(this, "Google Drive 授權失敗")
-            }
-        }
-    }
+        // val serviceConfig = net.openid.appauth.AuthorizationServiceConfiguration(
+        //     Uri.parse("https://accounts.google.com/o/oauth2/v2/auth"),
+        //     Uri.parse("https://oauth2.googleapis.com/token")
+        // )
+    //     val clientId = "705061051276-5ssikkg2ag39l7hj9t63saq549n3s2n5.apps.googleusercontent.com"
+    //     val redirectUri = Uri.parse("http://127.0.0.1:8080/")
+    //     val scope = "https://www.googleapis.com/auth/drive.file"
+    //
+    //     val authRequest = net.openid.appauth.AuthorizationRequest.Builder(
+    //         serviceConfig,
+    //         clientId,
+    //         net.openid.appauth.ResponseTypeValues.CODE,
+    //         redirectUri
+    //     )
+    //         .setScope(scope)
+    //         .build()
+    //
+    //     if (authService == null) authService = net.openid.appauth.AuthorizationService(this)
+    //     val authIntent = authService!!.getAuthorizationRequestIntent(authRequest)
+    //     startActivityForResult(authIntent, 9002)
+    //     // 請在 onActivityResult 處理授權結果
+    // // AppAuth 物件
+    // private var authService: net.openid.appauth.AuthorizationService? = null
+    //
+    // override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+    //     super.onActivityResult(requestCode, resultCode, data)
+    //     if (requestCode == 9002) {
+    //         val resp = net.openid.appauth.AuthorizationResponse.fromIntent(data!!)
+    //         val ex = net.openid.appauth.AuthorizationException.fromIntent(data)
+    //         if (resp != null) {
+    //             val tokenRequest = resp.createTokenExchangeRequest()
+    //             authService?.performTokenRequest(tokenRequest) { response, exception ->
+    //                 if (response != null) {
+    //                     val refreshToken = response.refreshToken
+    //                     if (refreshToken != null) {
+    //                         preferences.put("GoogleDriveRefreshToken", refreshToken)
+    //                         runOnUiThread {
+    //                             ToastUtils.infoToast(this, "Google Drive 授權成功，refresh token 已取得")
+    //                         }
+    //                     }
+    //                 } else {
+    //                     runOnUiThread {
+    //                         ToastUtils.errorToast(this, "Google Drive 授權失敗")
+    //                     }
+    //                 }
+    //             }
+    //         } else {
+    //             ToastUtils.errorToast(this, "Google Drive 授權失敗")
+    //         }
+    //     }
+    // }
     }
 
     override fun onDestroy() {
