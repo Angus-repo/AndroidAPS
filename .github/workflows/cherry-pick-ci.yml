@@ -42,7 +42,7 @@ jobs:
         run: |
           echo "🔗 Adding upstream: https://github.com/${{ github.event.inputs.upstream_repo }}.git"
           git remote add upstream https://github.com/${{ github.event.inputs.upstream_repo }}.git
-#          git fetch --all --tags
+          git fetch --all
 #          git fetch origin "+refs/heads/*:refs/remotes/origin/*" "+refs/pull/*:refs/remotes/origin/pr/*" --tags
 
 #      - name: Validate and fetch commits to cherry-pick
