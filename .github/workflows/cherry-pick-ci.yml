@@ -38,6 +38,19 @@ jobs:
           git fetch --all --tags
           git fetch origin "+refs/heads/*:refs/remotes/origin/*" "+refs/pull/*:refs/remotes/origin/pr/*" --tags
 
+      - name: Validate and fetch commits to cherry-pick
+        run: |
+          for commit in ${{ github.event.inputs.cherry_pick }}; do
+            echo "🔍 Verifying commit: $commit"
+            if ! git cat-file -e $commit^{commit}; then
+              echo "📥 Commit not found locally, fetching from origin..."
+              git fetch origin $commit || {
+                echo "❌ Cannot fetch commit: $commit"
+                exit 1
+              }
+            fi
+          done
+
       - name: Cherry-pick commits
         run: |
           echo "➡️ Cherry-picking commits: ${{ github.event.inputs.cherry_pick }}"
