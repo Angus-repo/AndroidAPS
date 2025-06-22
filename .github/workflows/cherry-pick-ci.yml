@@ -36,22 +36,6 @@ jobs:
       - name: Fetch all remotes and tags
         run: |
           git fetch --all --tags
-          
-      - name: Pre-fetch raw cherry-pick inputs
-        run: |
-          for commit in ${{ github.event.inputs.cherry_pick }}; do
-            echo "Fetching $commit ..."
-            # Fetch the commit into a temp local ref to ensure it exists in local object db
-            git fetch origin $commit:refs/temp/$commit || true
-          done
-
-      - name: Resolve rev-range to actual commits
-        id: resolve_range
-        run: |
-          echo "Resolving cherry-pick range: ${{ github.event.inputs.cherry_pick }}"
-          RESOLVED=$(git rev-list --reverse ${{ github.event.inputs.cherry_pick }})
-          echo "Resolved commits: $RESOLVED"
-          echo "COMMITS=$RESOLVED" >> $GITHUB_OUTPUT
 
       - name: Cherry-pick commits
         run: |
