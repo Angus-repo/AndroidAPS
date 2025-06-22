@@ -3,6 +3,11 @@ name: Cherry Pick CI (Pre-release Feature Backport)
 on:
   workflow_dispatch:
     inputs:
+      upstream_repo:
+        description: 'Upstream repository (format: owner/repo)'
+        required: true
+        default: 'nightscout/AndroidAPS'
+
       cherry_pick:
         description: 'Commit hash(es) to cherry-pick (e.g. abc123 def456)'
         required: true
@@ -31,26 +36,27 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          fetch-tags: true
+#          fetch-tags: true
 
       - name: Fetch all remotes and tags
         run: |
-          git remote add upstream https://github.com/nightscout/AndroidAPS.git
-          git fetch --all --tags
-          git fetch origin "+refs/heads/*:refs/remotes/origin/*" "+refs/pull/*:refs/remotes/origin/pr/*" --tags
+          echo "🔗 Adding upstream: https://github.com/${{ github.event.inputs.upstream_repo }}.git"
+          git remote add upstream https://github.com/${{ github.event.inputs.upstream_repo }}.git
+#          git fetch --all --tags
+#          git fetch origin "+refs/heads/*:refs/remotes/origin/*" "+refs/pull/*:refs/remotes/origin/pr/*" --tags
 
-      - name: Validate and fetch commits to cherry-pick
-        run: |
-          for commit in ${{ github.event.inputs.cherry_pick }}; do
-            echo "🔍 Verifying commit: $commit"
-            if ! git cat-file -e $commit^{commit}; then
-              echo "📥 Commit not found locally, fetching from origin..."
-              git fetch origin $commit || {
-                echo "❌ Cannot fetch commit: $commit"
-                exit 1
-              }
-            fi
-          done
+#      - name: Validate and fetch commits to cherry-pick
+#        run: |
+#          for commit in ${{ github.event.inputs.cherry_pick }}; do
+#            echo "🔍 Verifying commit: $commit"
+#            if ! git cat-file -e $commit^{commit}; then
+#              echo "📥 Commit not found locally, fetching from origin..."
+#              git fetch origin $commit || {
+#                echo "❌ Cannot fetch commit: $commit"
+#                exit 1
+#              }
+#            fi
+#          done
 
       - name: Cherry-pick commits
         run: |
