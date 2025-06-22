@@ -40,8 +40,9 @@ jobs:
       - name: Pre-fetch raw cherry-pick inputs
         run: |
           for commit in ${{ github.event.inputs.cherry_pick }}; do
-            echo "Fetching raw input $commit..."
-            git fetch origin $commit || true
+            echo "Fetching $commit ..."
+            # Fetch the commit into a temp local ref to ensure it exists in local object db
+            git fetch origin $commit:refs/temp/$commit || true
           done
 
       - name: Resolve rev-range to actual commits
