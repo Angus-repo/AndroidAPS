@@ -37,20 +37,20 @@ jobs:
         run: |
           git fetch --all --tags
           
-      - name: Resolve rev-range
+      - name: Pre-fetch raw cherry-pick inputs
+        run: |
+          for commit in ${{ github.event.inputs.cherry_pick }}; do
+            echo "Fetching raw input $commit..."
+            git fetch origin $commit || true
+          done
+
+      - name: Resolve rev-range to actual commits
         id: resolve_range
         run: |
           echo "Resolving cherry-pick range: ${{ github.event.inputs.cherry_pick }}"
           RESOLVED=$(git rev-list --reverse ${{ github.event.inputs.cherry_pick }})
           echo "Resolved commits: $RESOLVED"
           echo "COMMITS=$RESOLVED" >> $GITHUB_OUTPUT
-
-      - name: Fetch resolved commits
-        run: |
-          for commit in ${{ steps.resolve_range.outputs.COMMITS }}; do
-            echo "Fetching $commit..."
-            git fetch origin $commit
-          done
 
       - name: Cherry-pick commits
         run: |
