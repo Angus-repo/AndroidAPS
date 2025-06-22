@@ -32,6 +32,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetch all remotes and tags
+        run: |
+          git fetch --all --tags
+
       - name: Cherry-pick commits
         run: |
           echo "➡️ Cherry-picking commits: ${{ github.event.inputs.cherry_pick }}"
