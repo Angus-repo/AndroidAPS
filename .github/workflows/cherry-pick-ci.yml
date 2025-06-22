@@ -35,6 +35,7 @@ jobs:
 
       - name: Fetch all remotes and tags
         run: |
+          git remote add upstream https://github.com/nightscout/AndroidAPS.git
           git fetch --all --tags
           git fetch origin "+refs/heads/*:refs/remotes/origin/*" "+refs/pull/*:refs/remotes/origin/pr/*" --tags
 
