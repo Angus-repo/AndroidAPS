@@ -78,6 +78,63 @@ class HistoryBrowseActivity : TranslatedDaggerAppCompatActivity() {
         binding = ActivityHistorybrowseBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // 匯出按鈕：選擇時間區間並匯出資料
+        binding.exportButton.setOnClickListener {
+            // 選擇開始日期
+            val startPicker = MaterialDatePicker.Builder.datePicker()
+                .setTitleText("選擇開始日期")
+                .setSelection(dateUtil.timeStampToUtcDateMillis(historyBrowserData.overviewData.fromTime))
+                .setTheme(app.aaps.core.ui.R.style.DatePicker)
+                .build()
+            startPicker.addOnPositiveButtonClickListener { startSelection ->
+                // 選擇結束日期
+                val endPicker = MaterialDatePicker.Builder.datePicker()
+                    .setTitleText("選擇結束日期")
+                    .setSelection(startSelection)
+                    .setTheme(app.aaps.core.ui.R.style.DatePicker)
+                    .build()
+                endPicker.addOnPositiveButtonClickListener { endSelection ->
+                    // 執行匯出
+                    exportHistoryData(startSelection, endSelection)
+                }
+                endPicker.show(supportFragmentManager, "history_end_date_picker")
+            }
+            startPicker.show(supportFragmentManager, "history_start_date_picker")
+        }
+
+    /**
+     * 匯出指定時間區間的歷史資料成 CSV
+     */
+    private fun exportHistoryData(startUtc: Long, endUtc: Long) {
+        // 取得區間內的資料（這裡以 overviewData 為例，實際可根據需求擴充）
+        val fromTime = dateUtil.mergeUtcDateToTimestamp(historyBrowserData.overviewData.fromTime, startUtc)
+        val toTime = dateUtil.mergeUtcDateToTimestamp(historyBrowserData.overviewData.fromTime, endUtc)
+        // TODO: 根據 overviewData 取得該區間的 CGM、Basal、Bolus、IOB 等資料
+        // 這裡僅示範寫入一個簡單的 CSV 檔案
+        val csvHeader = "timestamp,value\n"
+        val csvContent = StringBuilder()
+        csvContent.append(csvHeader)
+        // 範例：假設有一個 getDataInRange 方法可取得資料
+        // val dataList = historyBrowserData.overviewData.getDataInRange(fromTime, toTime)
+        // for (data in dataList) {
+        //     csvContent.append("${data.timestamp},${data.value}\n")
+        // }
+        // 實際專案需根據資料結構調整
+        csvContent.append("$fromTime,DEMO_START\n")
+        csvContent.append("$toTime,DEMO_END\n")
+
+        // 寫入檔案到 Download 資料夾
+        try {
+            val fileName = "AAPS_History_${fromTime}_${toTime}.csv"
+            val downloads = android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS)
+            val file = java.io.File(downloads, fileName)
+            file.writeText(csvContent.toString())
+            android.widget.Toast.makeText(this, "匯出成功：${file.absolutePath}", android.widget.Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(this, "匯出失敗：${e.message}", android.widget.Toast.LENGTH_LONG).show()
+        }
+    }
+
         title = rh.gs(app.aaps.plugins.main.R.string.nav_history_browser)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setDisplayShowHomeEnabled(true)
