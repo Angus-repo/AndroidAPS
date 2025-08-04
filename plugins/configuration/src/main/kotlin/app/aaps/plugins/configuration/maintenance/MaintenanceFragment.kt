@@ -38,6 +38,8 @@ import app.aaps.plugins.configuration.R
 import app.aaps.plugins.configuration.activities.DaggerAppCompatActivityWithResult
 import app.aaps.plugins.configuration.databinding.MaintenanceFragmentBinding
 import app.aaps.plugins.configuration.maintenance.activities.LogSettingActivity
+import app.aaps.plugins.configuration.maintenance.googledrive.GoogleDriveManager
+import app.aaps.plugins.configuration.maintenance.googledrive.StorageSelectionDialog
 import dagger.android.support.DaggerFragment
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
@@ -64,6 +66,8 @@ class MaintenanceFragment : DaggerFragment() {
     @Inject lateinit var uiInteraction: UiInteraction
     @Inject lateinit var activePlugin: ActivePlugin
     @Inject lateinit var fileListProvider: FileListProvider
+    @Inject lateinit var googleDriveManager: GoogleDriveManager
+    @Inject lateinit var storageSelectionDialog: StorageSelectionDialog
 
     private val disposable = CompositeDisposable()
     private var inMenu = false
@@ -173,7 +177,10 @@ class MaintenanceFragment : DaggerFragment() {
             }
         }
         binding.directory.setOnClickListener {
-            maintenancePlugin.selectAapsDirectory(requireActivity() as DaggerAppCompatActivityWithResult)
+            storageSelectionDialog.showStorageSelectionDialog(
+                requireActivity() as DaggerAppCompatActivityWithResult,
+                onStorageChanged = { updateStorageErrorState() }
+            )
         }
         binding.navLogsettings.setOnClickListener { startActivity(Intent(activity, LogSettingActivity::class.java)) }
         binding.exportCsv.setOnClickListener {
@@ -190,7 +197,10 @@ class MaintenanceFragment : DaggerFragment() {
 
     override fun onResume() {
         super.onResume()
-        if (inMenu) queryProtection() else updateProtectedUi()
+        if (inMenu) queryProtection() else {
+            updateProtectedUi()
+            updateStorageErrorState()
+        }
     }
 
     @Synchronized
@@ -204,6 +214,16 @@ class MaintenanceFragment : DaggerFragment() {
         val isLocked = protectionCheck.isLocked(PREFERENCES)
         binding.mainLayout.visibility = isLocked.not().toVisibility()
         binding.unlock.visibility = isLocked.toVisibility()
+        
+        // Update storage error state when UI becomes available
+        if (!isLocked) {
+            updateStorageErrorState()
+        }
+    }
+
+    private fun updateStorageErrorState() {
+        val hasGoogleDriveError = googleDriveManager.hasConnectionError()
+        binding.directoryErrorIcon.visibility = if (hasGoogleDriveError) View.VISIBLE else View.GONE
     }
 
     private fun queryProtection() {

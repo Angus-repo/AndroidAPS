@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Storage selection colors -->
+    <color name="storage_card_normal">#FFFFFF</color>
+    <color name="storage_card_selected">#E3F2FD</color>
+    <color name="storage_card_normal_stroke">#E0E0E0</color>
+    <color name="storage_card_selected_stroke">#2196F3</color>
+    <color name="storage_text_normal">#212121</color>
+    <color name="storage_text_selected">#1976D2</color>
+    <color name="storage_icon_normal">#757575</color>
+    <color name="storage_icon_selected">#1976D2</color>
+    <color name="storage_description_text">#757575</color>
+</resources>

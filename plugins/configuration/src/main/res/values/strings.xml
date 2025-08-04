@@ -49,6 +49,15 @@
     <string name="unattended_settings_export">Unattended Settings Export</string>
     <string name="unattended_settings_export_summary">Enabling this will securely store your password on your phone</string>
     <string name="identification">Identification (email, FB or Discord nick etc)</string>
+    
+    <!-- Storage selection -->
+    <string name="storage_local_description">將設定儲存在本機選定的資料夾中</string>
+    <string name="storage_google_drive_description">將設定同步到 Google Drive 雲端儲存</string>
+    
+    <!-- Export/Import messages -->
+    <string name="exported_to_google_drive">設定已成功匯出到 Google Drive</string>
+    <string name="export_to_google_drive_failed">匯出到 Google Drive 失敗</string>
+    <string name="google_drive_connection_failed">Google Drive 連線失敗</string>
     <string name="request">Request</string>
     <string name="apsmode_title">APS Mode</string>
     <string name="setupwizard_preferred_aps_mode">Preferred APS mode</string>
@@ -175,5 +184,51 @@
     <string name="metadata_format_other">Unknown export format</string>
     <string name="reset_aps_results">Reset APS results</string>
     <string name="error_accessing_filesystem_select_aaps_directory_properly">Error accessing filesystem. Select AAPS directory properly.</string>
+
+    <!-- Google Drive Storage -->
+    <string name="storage_local">Local Storage</string>
+    <string name="storage_google_drive">Google Drive</string>
+    <string name="select_storage_type">Select Storage Type</string>
+    <string name="google_drive_authentication">Google Drive Authentication</string>
+    <string name="authenticate_with_google_drive">Authenticate with Google Drive</string>
+    <string name="google_drive_authentication_required">Google Drive authentication required</string>
+    <string name="google_drive_authentication_in_progress">Authenticating with Google Drive...</string>
+    <string name="google_drive_authentication_success">Google Drive authentication successful</string>
+    <string name="google_drive_authentication_failed">Google Drive authentication failed</string>
+    <string name="google_drive_connection_error">Google Drive connection error</string>
+    <string name="google_drive_select_folder">Select Google Drive Folder</string>
+    <string name="google_drive_default_folder">AAPS/settings</string>
+    <string name="google_drive_create_folder">Create Folder</string>
+    <string name="google_drive_folder_name">Folder Name</string>
+    <string name="google_drive_connection_lost">Google Drive connection lost. Please reconnect.</string>
+    <string name="google_drive_token_expired">Google Drive access expired. Please re-authenticate.</string>
+    <string name="google_drive_error_occurred">An error occurred with Google Drive connection</string>
+    <string name="google_drive_reauthorize_message">Google Drive connection failed. Would you like to re-authenticate?</string>
+    <string name="reauthorize">Re-authenticate</string>
+    <string name="google_drive_auth_success">Google Drive authentication successful</string>
+    <string name="google_drive_auth_failed">Google Drive authentication failed</string>
+    <string name="google_drive_error">Google Drive error: %1$s</string>
+    <string name="google_drive_auth_error">Google Drive authentication error</string>
+    <string name="google_drive_authorization">Google Drive Authorization</string>
+    <string name="root_folder">Root Folder</string>
+    <string name="backup_to_internal_storage">Internal Storage</string>
+    <string name="backup_to_google_drive">Google Drive</string>
+    <string name="google_drive_auth_cancel">Authentication cancelled</string>
+    <string name="google_drive_auth_waiting">Waiting for authentication...</string>
+    <string name="google_drive_auth_waiting_message">Please complete the authentication in your browser and return to this app.</string>
+    <string name="google_drive_auth_timeout">Authentication timeout</string>
+    <string name="google_drive_auth_timeout_message">Authentication timed out. Please try again.</string>
+    <string name="create_new_folder">Create New Folder</string>
+    <string name="select_google_drive_folder">Select Google Drive Folder</string>
+    <string name="selected_root_folder">Selected: Root Folder</string>
+    <string name="selected_folder">Selected: %1$s</string>
+    <string name="google_drive_folder_error">Failed to load Google Drive folders</string>
+    <string name="folder_name">Folder Name</string>
+    <string name="create_folder">Create Folder</string>
+    <string name="create">Create</string>
+    <string name="folder_name_required">Folder name is required</string>
+    <string name="folder_creation_failed">Failed to create folder: %1$s</string>
+    <string name="folder_created_successfully">Folder created successfully: %1$s</string>
+    <string name="folder_creation_error">Error creating folder</string>
 
 </resources>

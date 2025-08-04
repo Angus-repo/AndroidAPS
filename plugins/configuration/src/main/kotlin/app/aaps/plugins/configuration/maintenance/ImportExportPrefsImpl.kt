@@ -14,11 +14,14 @@ import androidx.core.content.ContextCompat
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.work.ExistingWorkPolicy
+import kotlinx.coroutines.launch
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
+import java.io.File
 import app.aaps.core.data.model.TE
 import app.aaps.core.data.model.UE
 import app.aaps.core.data.time.T
@@ -68,6 +71,7 @@ import app.aaps.plugins.configuration.maintenance.data.PrefsFormat
 import app.aaps.plugins.configuration.maintenance.data.PrefsStatusImpl
 import app.aaps.plugins.configuration.maintenance.dialogs.PrefImportSummaryDialog
 import app.aaps.plugins.configuration.maintenance.formats.EncryptedPrefsFormat
+import app.aaps.plugins.configuration.maintenance.googledrive.GoogleDriveManager
 import app.aaps.shared.impl.weardata.ZipWatchfaceFormat
 import dagger.Reusable
 import dagger.android.HasAndroidInjector
@@ -102,7 +106,8 @@ class ImportExportPrefsImpl @Inject constructor(
     private val context: Context,
     private val dataWorkerStorage: DataWorkerStorage,
     private val activePlugin: ActivePlugin,
-    private val configBuilder: ConfigBuilder
+    private val configBuilder: ConfigBuilder,
+    private val googleDriveManager: GoogleDriveManager
 ) : ImportExportPrefs {
 
     override var selectedImportFile: PrefsFile? = null
@@ -303,8 +308,29 @@ class ImportExportPrefsImpl @Inject constructor(
     }
 
     private fun exportSharedPreferences(activity: FragmentActivity) {
+        // Check if AAPS directory is configured
+        val directoryUri = preferences.getIfExists(StringKey.AapsDirectoryUri)
+        if (directoryUri.isNullOrEmpty()) {
+            ToastUtils.errorToast(activity, rh.gs(R.string.error_accessing_filesystem_select_aaps_directory_properly))
+            return
+        }
+
+        // Check if using Google Drive storage
+        if (googleDriveManager.getStorageType() == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE) {
+            exportToGoogleDrive(activity)
+        } else {
+            exportToLocal(activity)
+        }
+    }
+    
+    private fun exportToLocal(activity: FragmentActivity) {
         prefFileList.ensureExportDirExists()
-        val newFile = prefFileList.newPreferenceFile() ?: return
+        val newFile = prefFileList.newPreferenceFile()
+        
+        if (newFile == null) {
+            ToastUtils.errorToast(activity, rh.gs(R.string.exported_failed))
+            return
+        }
 
         askToConfirmExport(activity, newFile) { password ->
             // Save preferences
@@ -327,6 +353,73 @@ class ImportExportPrefsImpl @Inject constructor(
             ).subscribe()
         }
     }
+    
+    private fun exportToGoogleDrive(activity: FragmentActivity) {
+        // Test Google Drive connection first
+        activity.lifecycleScope.launch {
+            try {
+                if (!googleDriveManager.testConnection()) {
+                    ToastUtils.errorToast(activity, rh.gs(R.string.google_drive_connection_failed))
+                    return@launch
+                }
+                
+                // Create temporary file for export
+                val tempDir = activity.cacheDir
+                val tempFile = DocumentFile.fromFile(File(tempDir, "preferences_temp.json"))
+                
+                if (tempFile?.exists() == true) {
+                    tempFile.delete()
+                }
+                
+                // Create DocumentFile for temporary storage
+                val tempDocFile = DocumentFile.fromFile(File(tempDir, "preferences_temp.json"))
+                
+                try {
+                    // Save preferences to temporary file
+                    val saveSuccess = savePreferences(tempDocFile!!, password = "")
+                    if (!saveSuccess) {
+                        ToastUtils.errorToast(activity, rh.gs(R.string.exported_failed))
+                        return@launch
+                    }
+                    
+                    // Read file content
+                    val fileContent = tempDocFile.uri?.let { uri ->
+                        activity.contentResolver.openInputStream(uri)?.use { inputStream ->
+                            inputStream.readBytes()
+                        }
+                    }
+                    
+                    if (fileContent == null) {
+                        ToastUtils.errorToast(activity, rh.gs(R.string.exported_failed))
+                        return@launch
+                    }
+                    val fileName = tempDocFile.name ?: "preferences.json"
+                    
+                    val uploadedFileId = googleDriveManager.uploadFile(fileName, fileContent, "application/json")
+                    
+                    val exportResultMessage = if (uploadedFileId != null) {
+                        rh.gs(R.string.exported_to_google_drive)
+                    } else {
+                        rh.gs(R.string.export_to_google_drive_failed)
+                    }
+                    
+                    ToastUtils.infoToast(activity, exportResultMessage)
+                    
+                    // Clean up temporary file
+                    tempDocFile.delete()
+                    
+                } catch (e: Exception) {
+                    aapsLogger.error(LTag.CORE, "Google Drive export failed", e)
+                    ToastUtils.errorToast(activity, rh.gs(R.string.export_to_google_drive_failed))
+                    tempDocFile?.delete()
+                }
+                
+            } catch (e: Exception) {
+                aapsLogger.error(LTag.CORE, "Google Drive export failed", e)
+                ToastUtils.errorToast(activity, rh.gs(R.string.export_to_google_drive_failed))
+            }
+        }
+    }
 
     override fun exportSharedPreferencesNonInteractive(context: Context, password: String): Boolean {
         prefFileList.ensureExportDirExists()
@@ -337,6 +430,12 @@ class ImportExportPrefsImpl @Inject constructor(
     }
 
     override fun importSharedPreferences(activity: FragmentActivity) {
+        // Check if AAPS directory is configured
+        val directoryUri = preferences.getIfExists(StringKey.AapsDirectoryUri)
+        if (directoryUri.isNullOrEmpty()) {
+            ToastUtils.errorToast(activity, rh.gs(R.string.error_accessing_filesystem_select_aaps_directory_properly))
+            return
+        }
 
         try {
             if (activity is DaggerAppCompatActivityWithResult)
