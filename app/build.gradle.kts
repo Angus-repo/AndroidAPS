@@ -137,6 +137,27 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            if (project.hasProperty("android.injected.signing.store.file")) {
+                storeFile = file(project.property("android.injected.signing.store.file").toString())
+                storePassword = project.property("android.injected.signing.store.password").toString()
+                keyAlias = project.property("android.injected.signing.key.alias").toString()
+                keyPassword = project.property("android.injected.signing.key.password").toString()
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            if (project.hasProperty("android.injected.signing.store.file")) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
+    }
+
     useLibrary("org.apache.http.legacy")
 
     //Deleting it causes a binding error

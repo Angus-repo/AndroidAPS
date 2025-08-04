@@ -132,20 +132,36 @@
                     android:padding="10dip"
                     app:columnCount="2">
 
-                    <app.aaps.core.ui.elements.SingleClickButton
-                        android:id="@+id/directory"
-                        style="@style/GrayButton"
+                    <FrameLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:drawableTop="@drawable/ic_directory"
-                        android:paddingStart="0dp"
-                        android:paddingEnd="0dp"
-                        android:text="@string/aaps_directory"
-                        android:textSize="11sp"
                         app:layout_column="0"
                         app:layout_columnWeight="1"
                         app:layout_gravity="fill"
-                        app:layout_row="0" />
+                        app:layout_row="0">
+
+                        <app.aaps.core.ui.elements.SingleClickButton
+                            android:id="@+id/directory"
+                            style="@style/GrayButton"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:drawableTop="@drawable/ic_directory"
+                            android:paddingStart="0dp"
+                            android:paddingEnd="0dp"
+                            android:text="@string/aaps_directory"
+                            android:textSize="11sp" />
+
+                        <ImageView
+                            android:id="@+id/directory_error_icon"
+                            android:layout_width="16dp"
+                            android:layout_height="16dp"
+                            android:layout_gravity="top|end"
+                            android:layout_margin="4dp"
+                            android:src="@drawable/ic_error"
+                            android:visibility="gone"
+                            android:contentDescription="@string/google_drive_connection_error" />
+
+                    </FrameLayout>
 
                     <app.aaps.core.ui.elements.SingleClickButton
                         android:id="@+id/nav_export"
