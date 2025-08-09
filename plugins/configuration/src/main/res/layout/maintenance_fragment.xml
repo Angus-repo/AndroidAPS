@@ -148,7 +148,7 @@
                             android:drawableTop="@drawable/ic_directory"
                             android:paddingStart="0dp"
                             android:paddingEnd="0dp"
-                            android:text="@string/aaps_directory"
+                            android:text="@string/local_directory"
                             android:textSize="11sp" />
 
                         <ImageView
@@ -162,6 +162,21 @@
                             android:contentDescription="@string/google_drive_connection_error" />
 
                     </FrameLayout>
+
+                    <app.aaps.core.ui.elements.SingleClickButton
+                        android:id="@+id/cloud_directory"
+                        style="@style/GrayButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:drawableTop="@drawable/ic_directory"
+                        android:paddingStart="0dp"
+                        android:paddingEnd="0dp"
+                        android:text="@string/cloud_directory"
+                        android:textSize="11sp"
+                        app:layout_column="1"
+                        app:layout_columnWeight="1"
+                        app:layout_gravity="fill"
+                        app:layout_row="0" />
 
                     <app.aaps.core.ui.elements.SingleClickButton
                         android:id="@+id/nav_export"

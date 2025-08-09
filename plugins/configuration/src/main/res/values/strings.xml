@@ -230,5 +230,6 @@
     <string name="folder_creation_failed">Failed to create folder: %1$s</string>
     <string name="folder_created_successfully">Folder created successfully: %1$s</string>
     <string name="folder_creation_error">Error creating folder</string>
-
+    <string name="local_directory">Local directory</string>
+    <string name="cloud_directory">Cloud directory</string>
 </resources>

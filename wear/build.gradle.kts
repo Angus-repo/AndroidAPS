@@ -109,6 +109,10 @@ dependencies {
     implementation(libs.androidx.wear.tiles)
     implementation(libs.androidx.constraintlayout)
 
+    // 新增：Dagger Android 依賴，搭配 KSP 處理 @ContributesAndroidInjector
+    implementation(libs.com.google.dagger.android)
+    implementation(libs.com.google.dagger.android.support)
+
     testImplementation(project(":shared:tests"))
 
     compileOnly(libs.com.google.android.wearable)
