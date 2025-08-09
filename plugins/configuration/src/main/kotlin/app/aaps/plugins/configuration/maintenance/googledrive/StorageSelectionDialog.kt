@@ -19,6 +19,7 @@ import app.aaps.plugins.configuration.maintenance.MaintenancePlugin
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import app.aaps.core.ui.dialogs.OKDialog
 
 @Singleton
 class StorageSelectionDialog @Inject constructor(
@@ -66,14 +67,40 @@ class StorageSelectionDialog @Inject constructor(
             .create()
         
         localCard.setOnClickListener {
-            updateCardSelection(localCard, localIcon, localText, true)
-            updateCardSelection(googleDriveCard, googleDriveIcon, googleDriveText, false)
-            
-            googleDriveManager.setStorageType(GoogleDriveManager.STORAGE_TYPE_LOCAL)
-            googleDriveManager.clearConnectionError()
-            dialog.dismiss()
-            onLocalSelected()
-            onStorageChanged()
+            // 僅當原本為雲端儲存時，切回本地需要詢問是否清除雲端使用權限
+            val wasGoogleDrive = googleDriveManager.getStorageType() == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE
+            if (wasGoogleDrive) {
+                OKDialog.showYesNoCancel(
+                    activity,
+                    rh.gs(R.string.select_storage_type),
+                    "Switch to local directory. Clear cloud access permissions?",
+                    Runnable {
+                        // 是：清除雲端 refresh token，切到本地
+                        googleDriveManager.clearGoogleDriveSettings()
+                        googleDriveManager.setStorageType(GoogleDriveManager.STORAGE_TYPE_LOCAL)
+                        googleDriveManager.clearConnectionError()
+                        dialog.dismiss()
+                        onLocalSelected()
+                        onStorageChanged()
+                    },
+                    Runnable {
+                        // 否：不清除雲端資訊，切到本地
+                        googleDriveManager.setStorageType(GoogleDriveManager.STORAGE_TYPE_LOCAL)
+                        googleDriveManager.clearConnectionError()
+                        dialog.dismiss()
+                        onLocalSelected()
+                        onStorageChanged()
+                    }
+                )
+                // 取消：OKDialog 只關閉確認視窗，不做任何事，也不關閉本對話框
+            } else {
+                // 原本就為本地或其他狀態，直接設為本地
+                googleDriveManager.setStorageType(GoogleDriveManager.STORAGE_TYPE_LOCAL)
+                googleDriveManager.clearConnectionError()
+                dialog.dismiss()
+                onLocalSelected()
+                onStorageChanged()
+            }
         }
         
         googleDriveCard.setOnClickListener {
