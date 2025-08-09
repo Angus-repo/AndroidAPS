@@ -83,6 +83,10 @@ import java.io.FileNotFoundException
 import java.io.IOException
 import javax.inject.Inject
 
+// Added for dialog callback explicit types
+import android.content.DialogInterface
+import androidx.appcompat.app.AlertDialog
+
 /**
  * Created by mike on 03.07.2016.
  */
@@ -239,6 +243,34 @@ class ImportExportPrefsImpl @Inject constructor(
         )
     }
 
+    // 新增：針對非檔名目標（例如 Google Drive）顯示用的確認對話框（可強制詢問密碼）
+    private fun askToConfirmExport(activity: FragmentActivity, targetDisplayName: String, forcePrompt: Boolean = false, then: ((password: String) -> Unit)) {
+        if (!assureMasterPasswordSet(activity, app.aaps.core.ui.R.string.nav_export)) return
+
+        if (!forcePrompt) {
+            val (password, isExpired, isAboutToExpire) = exportPasswordDataStore.getPasswordFromDataStore(context)
+            if (password.isNotEmpty() && !(isExpired || isAboutToExpire)) {
+                then(password)
+                return
+            }
+        }
+        exportPasswordDataStore.clearPasswordDataStore(context)
+
+        TwoMessagesAlertDialog.showAlert(
+            activity,
+            rh.gs(app.aaps.core.ui.R.string.nav_export),
+            rh.gs(R.string.export_to) + " " + targetDisplayName + " ?",
+            rh.gs(R.string.password_preferences_encrypt_prompt),
+            {
+                askForMasterPassIfNeeded(activity, R.string.preferences_export_canceled) { pwd ->
+                    then(exportPasswordDataStore.putPasswordToDataStore(context, pwd))
+                }
+            },
+            null,
+            R.drawable.ic_header_export
+        )
+    }
+
     private fun askToConfirmImport(activity: FragmentActivity, fileToImport: PrefsFile, then: ((password: String) -> Unit)) {
         if (!assureMasterPasswordSet(activity, R.string.import_setting)) return
         TwoMessagesAlertDialog.showAlert(
@@ -308,19 +340,19 @@ class ImportExportPrefsImpl @Inject constructor(
     }
 
     private fun exportSharedPreferences(activity: FragmentActivity) {
-        // Check if AAPS directory is configured
+        // 依儲存型態分支；僅本地流程需要檢查 AAPS 目錄
+        if (googleDriveManager.getStorageType() == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE) {
+            exportToGoogleDrive(activity)
+            return
+        }
+
+        // Local export requires AAPS base directory
         val directoryUri = preferences.getIfExists(StringKey.AapsDirectoryUri)
         if (directoryUri.isNullOrEmpty()) {
             ToastUtils.errorToast(activity, rh.gs(R.string.error_accessing_filesystem_select_aaps_directory_properly))
             return
         }
-
-        // Check if using Google Drive storage
-        if (googleDriveManager.getStorageType() == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE) {
-            exportToGoogleDrive(activity)
-        } else {
-            exportToLocal(activity)
-        }
+        exportToLocal(activity)
     }
     
     private fun exportToLocal(activity: FragmentActivity) {
@@ -355,65 +387,75 @@ class ImportExportPrefsImpl @Inject constructor(
     }
     
     private fun exportToGoogleDrive(activity: FragmentActivity) {
-        // Test Google Drive connection first
         activity.lifecycleScope.launch {
             try {
                 if (!googleDriveManager.testConnection()) {
                     ToastUtils.errorToast(activity, rh.gs(R.string.google_drive_connection_failed))
                     return@launch
                 }
-                
-                // Create temporary file for export
-                val tempDir = activity.cacheDir
-                val tempFile = DocumentFile.fromFile(File(tempDir, "preferences_temp.json"))
-                
-                if (tempFile?.exists() == true) {
-                    tempFile.delete()
+
+                // 使用 AAPS/temp SAF 目錄建立暫存檔
+                val tempDir = prefFileList.ensureTempDirExists()
+                if (tempDir == null) {
+                    ToastUtils.errorToast(activity, rh.gs(R.string.exported_failed))
+                    return@launch
                 }
-                
-                // Create DocumentFile for temporary storage
-                val tempDocFile = DocumentFile.fromFile(File(tempDir, "preferences_temp.json"))
-                
-                try {
-                    // Save preferences to temporary file
-                    val saveSuccess = savePreferences(tempDocFile!!, password = "")
-                    if (!saveSuccess) {
-                        ToastUtils.errorToast(activity, rh.gs(R.string.exported_failed))
-                        return@launch
-                    }
-                    
-                    // Read file content
-                    val fileContent = tempDocFile.uri?.let { uri ->
-                        activity.contentResolver.openInputStream(uri)?.use { inputStream ->
-                            inputStream.readBytes()
+
+                // 與本地檔名一致：yyyy-MM-dd_HHmmss_FLAVOUR.json
+                val timeLocal = org.joda.time.LocalDateTime.now().toString(org.joda.time.format.DateTimeFormat.forPattern("yyyy-MM-dd'_'HHmmss"))
+                val exportFileName = "${timeLocal}_${config.FLAVOR}.json"
+                val tempDoc = tempDir.createFile("application/json", exportFileName)
+                if (tempDoc == null) {
+                    ToastUtils.errorToast(activity, rh.gs(R.string.exported_failed))
+                    return@launch
+                }
+
+                // 強制詢問密碼
+                askToConfirmExport(activity, "Google Drive", forcePrompt = true) { password ->
+                    activity.lifecycleScope.launch {
+                        try {
+                            val saved = savePreferences(tempDoc, password)
+                            if (!saved) {
+                                ToastUtils.errorToast(activity, rh.gs(R.string.exported_failed))
+                                tempDoc.delete()
+                                return@launch
+                            }
+
+                            val bytes = activity.contentResolver.openInputStream(tempDoc.uri)?.use { it.readBytes() }
+                            if (bytes == null) {
+                                ToastUtils.errorToast(activity, rh.gs(R.string.exported_failed))
+                                tempDoc.delete()
+                                return@launch
+                            }
+
+                            val uploadedFileId = googleDriveManager.uploadFile(exportFileName, bytes, "application/json")
+
+                            val exportResultMessage = if (uploadedFileId != null) {
+                                rh.gs(R.string.exported_to_google_drive)
+                            } else {
+                                rh.gs(R.string.export_to_google_drive_failed)
+                            }
+
+                            ToastUtils.infoToast(activity, exportResultMessage)
+
+                            // 記錄 Therapy 事件
+                            disposable += persistenceLayer.insertPumpTherapyEventIfNewByTimestamp(
+                                therapyEvent = TE.asSettingsExport(error = exportResultMessage),
+                                timestamp = dateUtil.now(),
+                                action = Action.EXPORT_SETTINGS,
+                                source = Sources.Automation,
+                                note = "Manual: ${'$'}exportResultMessage",
+                                listValues = listOf()
+                            ).subscribe()
+
+                            tempDoc.delete()
+                        } catch (e: Exception) {
+                            aapsLogger.error(LTag.CORE, "Google Drive export failed", e)
+                            ToastUtils.errorToast(activity, rh.gs(R.string.export_to_google_drive_failed))
+                            tempDoc.delete()
                         }
                     }
-                    
-                    if (fileContent == null) {
-                        ToastUtils.errorToast(activity, rh.gs(R.string.exported_failed))
-                        return@launch
-                    }
-                    val fileName = tempDocFile.name ?: "preferences.json"
-                    
-                    val uploadedFileId = googleDriveManager.uploadFile(fileName, fileContent, "application/json")
-                    
-                    val exportResultMessage = if (uploadedFileId != null) {
-                        rh.gs(R.string.exported_to_google_drive)
-                    } else {
-                        rh.gs(R.string.export_to_google_drive_failed)
-                    }
-                    
-                    ToastUtils.infoToast(activity, exportResultMessage)
-                    
-                    // Clean up temporary file
-                    tempDocFile.delete()
-                    
-                } catch (e: Exception) {
-                    aapsLogger.error(LTag.CORE, "Google Drive export failed", e)
-                    ToastUtils.errorToast(activity, rh.gs(R.string.export_to_google_drive_failed))
-                    tempDocFile?.delete()
                 }
-                
             } catch (e: Exception) {
                 aapsLogger.error(LTag.CORE, "Google Drive export failed", e)
                 ToastUtils.errorToast(activity, rh.gs(R.string.export_to_google_drive_failed))
@@ -430,7 +472,13 @@ class ImportExportPrefsImpl @Inject constructor(
     }
 
     override fun importSharedPreferences(activity: FragmentActivity) {
-        // Check if AAPS directory is configured
+        // 依儲存型態分支；僅本地流程需要檢查 AAPS 目錄
+        if (googleDriveManager.getStorageType() == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE) {
+            importFromGoogleDrive(activity)
+            return
+        }
+
+        // Local import requires AAPS base directory
         val directoryUri = preferences.getIfExists(StringKey.AapsDirectoryUri)
         if (directoryUri.isNullOrEmpty()) {
             ToastUtils.errorToast(activity, rh.gs(R.string.error_accessing_filesystem_select_aaps_directory_properly))
@@ -441,10 +489,51 @@ class ImportExportPrefsImpl @Inject constructor(
             if (activity is DaggerAppCompatActivityWithResult)
                 activity.callForPrefFile?.launch(null)
         } catch (e: IllegalArgumentException) {
-            // this exception happens on some early implementations of ActivityResult contracts
-            // when registered and called for the second time
             ToastUtils.errorToast(activity, rh.gs(R.string.goto_main_try_again))
             aapsLogger.error(LTag.CORE, "Internal android framework exception", e)
+        }
+    }
+
+    private fun importFromGoogleDrive(activity: FragmentActivity) {
+        activity.lifecycleScope.launch {
+            try {
+                if (!googleDriveManager.testConnection()) {
+                    ToastUtils.errorToast(activity, rh.gs(R.string.google_drive_connection_failed))
+                    return@launch
+                }
+                val files = googleDriveManager.listSettingsFiles()
+                if (files.isEmpty()) {
+                    ToastUtils.warnToast(activity, rh.gs(R.string.preferences_import_list_title))
+                    return@launch
+                }
+
+                val names = files.map { it.name }.toTypedArray()
+                AlertDialog.Builder(activity)
+                    .setTitle(rh.gs(R.string.preferences_import_list_title))
+                    .setItems(names) { _: DialogInterface, which: Int ->
+                        activity.lifecycleScope.launch {
+                            try {
+                                val chosen = files[which]
+                                val bytes = googleDriveManager.downloadFile(chosen.id)
+                                if (bytes == null) {
+                                    ToastUtils.errorToast(activity, rh.gs(R.string.filenotfound))
+                                    return@launch
+                                }
+                                // 準備 PrefsFile 並進入既有的導入流程
+                                selectedImportFile = PrefsFile(chosen.name, bytes.toString(Charsets.UTF_8), emptyMap<PrefsMetadataKey, PrefMetadata>())
+                                doImportSharedPreferences(activity)
+                            } catch (e: Exception) {
+                                aapsLogger.error(LTag.CORE, "Google Drive import failed", e)
+                                ToastUtils.errorToast(activity, rh.gs(R.string.google_drive_folder_error))
+                            }
+                        }
+                    }
+                    .setNegativeButton(rh.gs(app.aaps.core.ui.R.string.cancel), null)
+                    .show()
+            } catch (e: Exception) {
+                aapsLogger.error(LTag.CORE, "Google Drive import init failed", e)
+                ToastUtils.errorToast(activity, rh.gs(R.string.google_drive_folder_error))
+            }
         }
     }
 

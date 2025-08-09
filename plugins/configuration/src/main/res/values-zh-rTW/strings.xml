@@ -168,4 +168,6 @@
     <string name="metadata_format_other">未知的匯出格式</string>
     <string name="reset_aps_results">重置APS結果</string>
     <string name="error_accessing_filesystem_select_aaps_directory_properly">無法存取檔案系統。請正確選擇 AAPS 目錄。</string>
+    <string name="local_directory">本地目錄</string>
+    <string name="cloud_directory">雲端目錄</string>
 </resources>

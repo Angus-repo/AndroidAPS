@@ -176,11 +176,22 @@ class MaintenanceFragment : DaggerFragment() {
                 importExportPrefs.importSharedPreferences(activity as FragmentActivity)
             }
         }
+        // 本地目錄：只用於挑選 AAPS 基礎資料夾
         binding.directory.setOnClickListener {
-            storageSelectionDialog.showStorageSelectionDialog(
-                requireActivity() as DaggerAppCompatActivityWithResult,
-                onStorageChanged = { updateStorageErrorState() }
-            )
+            (requireActivity() as? DaggerAppCompatActivityWithResult)?.let { act ->
+                maintenancePlugin.selectAapsDirectory(act)
+            }
+        }
+        // 雲端目錄：選擇不使用或 Google Drive
+        binding.cloudDirectory.setOnClickListener {
+            (requireActivity() as? DaggerAppCompatActivityWithResult)?.let { act ->
+                storageSelectionDialog.showStorageSelectionDialog(
+                    act,
+                    onLocalSelected = { /* 選擇不使用雲端：將儲存型態設為 local，無動作 */ },
+                    onGoogleDriveSelected = { /* 已在對話框內處理授權與資料夾選擇 */ },
+                    onStorageChanged = { updateStorageErrorState() }
+                )
+            }
         }
         binding.navLogsettings.setOnClickListener { startActivity(Intent(activity, LogSettingActivity::class.java)) }
         binding.exportCsv.setOnClickListener {

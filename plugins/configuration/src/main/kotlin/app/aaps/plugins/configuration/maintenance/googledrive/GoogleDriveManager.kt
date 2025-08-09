@@ -754,12 +754,80 @@ class GoogleDriveManager @Inject constructor(
         }
         errorNotificationId = null
     }
+
+    /**
+     * 列出目前資料夾中的設定檔(json)
+     */
+    suspend fun listSettingsFiles(): List<DriveFile> = withContext(Dispatchers.IO) {
+        try {
+            val accessToken = getValidAccessToken() ?: return@withContext emptyList()
+            val folderId = getSelectedFolderId().ifEmpty { "root" }
+            val query = "'$folderId' in parents and trashed=false and mimeType != 'application/vnd.google-apps.folder' and name contains '.json'"
+            val url = "$DRIVE_API_URL/files?q=${Uri.encode(query)}&fields=files(id,name,modifiedTime)&orderBy=modifiedTime desc&pageSize=50"
+            val request = Request.Builder()
+                .url(url)
+                .header("Authorization", "Bearer $accessToken")
+                .build()
+            val response = client.newCall(request).execute()
+            val body = response.body?.string() ?: ""
+            if (!response.isSuccessful) {
+                aapsLogger.error(LTag.CORE, "Failed to list settings files: $body")
+                showConnectionError("Failed to list settings files")
+                return@withContext emptyList()
+            }
+            clearConnectionError()
+            val json = JSONObject(body)
+            val arr = json.optJSONArray("files") ?: JSONArray()
+            val result = mutableListOf<DriveFile>()
+            for (i in 0 until arr.length()) {
+                val f = arr.getJSONObject(i)
+                result.add(DriveFile(id = f.getString("id"), name = f.getString("name")))
+            }
+            result
+        } catch (e: Exception) {
+            aapsLogger.error(LTag.CORE, "Error listing settings files", e)
+            showConnectionError("Error listing settings files: ${e.message}")
+            emptyList()
+        }
+    }
+
+    /**
+     * 下載檔案內容
+     */
+    suspend fun downloadFile(fileId: String): ByteArray? = withContext(Dispatchers.IO) {
+        try {
+            val accessToken = getValidAccessToken() ?: return@withContext null
+            val request = Request.Builder()
+                .url("$DRIVE_API_URL/files/$fileId?alt=media")
+                .header("Authorization", "Bearer $accessToken")
+                .build()
+            val response = client.newCall(request).execute()
+            if (!response.isSuccessful) {
+                val msg = response.body?.string()
+                aapsLogger.error(LTag.CORE, "Failed to download file: $msg")
+                showConnectionError("Failed to download file")
+                return@withContext null
+            }
+            clearConnectionError()
+            response.body?.bytes()
+        } catch (e: Exception) {
+            aapsLogger.error(LTag.CORE, "Error downloading file", e)
+            showConnectionError("Error downloading file: ${e.message}")
+            null
+        }
+    }
 }
 
 /**
  * Google Drive 資料夾資料類別
  */
 data class DriveFolder(
+    val id: String,
+    val name: String
+)
+
+/** 新增：Google Drive 檔案資料類別 */
+data class DriveFile(
     val id: String,
     val name: String
 )
