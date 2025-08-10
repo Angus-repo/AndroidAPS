@@ -19,7 +19,6 @@ import app.aaps.plugins.configuration.maintenance.MaintenancePlugin
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
-import app.aaps.core.ui.dialogs.OKDialog
 
 @Singleton
 class StorageSelectionDialog @Inject constructor(
@@ -30,7 +29,7 @@ class StorageSelectionDialog @Inject constructor(
 ) {
     
     /**
-     * 顯示儲存方式選擇對話框
+     * Show storage selection dialog
      */
     fun showStorageSelectionDialog(
         activity: DaggerAppCompatActivityWithResult,
@@ -52,11 +51,11 @@ class StorageSelectionDialog @Inject constructor(
         val currentType = googleDriveManager.getStorageType()
         val isGoogleDriveSelected = currentType == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE
         
-        // 設置初始選擇狀態
+        // Initial selection state
         updateCardSelection(localCard, localIcon, localText, !isGoogleDriveSelected)
         updateCardSelection(googleDriveCard, googleDriveIcon, googleDriveText, isGoogleDriveSelected)
         
-        // 設置描述文字
+        // Descriptions (English by default)
         localDescription.text = rh.gs(R.string.storage_local_description)
         googleDriveDescription.text = rh.gs(R.string.storage_google_drive_description)
         
@@ -67,37 +66,38 @@ class StorageSelectionDialog @Inject constructor(
             .create()
         
         localCard.setOnClickListener {
-            // 僅當原本為雲端儲存時，切回本地需要詢問是否清除雲端使用權限
+            // When switching from non-local to local, ask Yes/No and keep this dialog open
             val wasGoogleDrive = googleDriveManager.getStorageType() == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE
             if (wasGoogleDrive) {
-                OKDialog.showYesNoCancel(
-                    activity,
-                    rh.gs(R.string.select_storage_type),
-                    "Switch to local directory. Clear cloud access permissions?",
-                    Runnable {
-                        // 是：清除雲端 refresh token，切到本地
+                AlertDialog.Builder(activity)
+                    .setTitle("Switch to Local")
+                    .setMessage("Switch to local storage. Clear cloud authorization?")
+                    .setPositiveButton(rh.gs(app.aaps.core.ui.R.string.yes)) { _, _ ->
+                        // Yes: clear cloud tokens and switch to local, keep dialog open
                         googleDriveManager.clearGoogleDriveSettings()
                         googleDriveManager.setStorageType(GoogleDriveManager.STORAGE_TYPE_LOCAL)
                         googleDriveManager.clearConnectionError()
-                        dialog.dismiss()
-                        onLocalSelected()
-                        onStorageChanged()
-                    },
-                    Runnable {
-                        // 否：不清除雲端資訊，切到本地
-                        googleDriveManager.setStorageType(GoogleDriveManager.STORAGE_TYPE_LOCAL)
-                        googleDriveManager.clearConnectionError()
-                        dialog.dismiss()
+                        updateCardSelection(localCard, localIcon, localText, true)
+                        updateCardSelection(googleDriveCard, googleDriveIcon, googleDriveText, false)
                         onLocalSelected()
                         onStorageChanged()
                     }
-                )
-                // 取消：OKDialog 只關閉確認視窗，不做任何事，也不關閉本對話框
+                    .setNegativeButton(rh.gs(app.aaps.core.ui.R.string.no)) { _, _ ->
+                        // No: keep cloud info, switch to local, keep dialog open
+                        googleDriveManager.setStorageType(GoogleDriveManager.STORAGE_TYPE_LOCAL)
+                        googleDriveManager.clearConnectionError()
+                        updateCardSelection(localCard, localIcon, localText, true)
+                        updateCardSelection(googleDriveCard, googleDriveIcon, googleDriveText, false)
+                        onLocalSelected()
+                        onStorageChanged()
+                    }
+                    .show()
             } else {
-                // 原本就為本地或其他狀態，直接設為本地
+                // Already local: ensure state and keep dialog open
                 googleDriveManager.setStorageType(GoogleDriveManager.STORAGE_TYPE_LOCAL)
                 googleDriveManager.clearConnectionError()
-                dialog.dismiss()
+                updateCardSelection(localCard, localIcon, localText, true)
+                updateCardSelection(googleDriveCard, googleDriveIcon, googleDriveText, false)
                 onLocalSelected()
                 onStorageChanged()
             }
@@ -114,9 +114,7 @@ class StorageSelectionDialog @Inject constructor(
         dialog.show()
     }
     
-    /**
-     * 更新卡片選擇狀態
-     */
+    /** Update card selection visuals */
     private fun updateCardSelection(card: com.google.android.material.card.MaterialCardView, icon: ImageView, text: TextView, isSelected: Boolean) {
         val context = card.context
         if (isSelected) {
@@ -134,9 +132,7 @@ class StorageSelectionDialog @Inject constructor(
         }
     }
     
-    /**
-     * 處理 Google Drive 選擇
-     */
+    /** Handle Google Drive selection */
     private fun handleGoogleDriveSelection(
         activity: DaggerAppCompatActivityWithResult,
         onSuccess: () -> Unit,
@@ -145,18 +141,15 @@ class StorageSelectionDialog @Inject constructor(
         activity.lifecycleScope.launch {
             try {
                 if (googleDriveManager.hasValidRefreshToken()) {
-                    // 已有 refresh token，測試連線
                     if (googleDriveManager.testConnection()) {
                         googleDriveManager.setStorageType(GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE)
                         onSuccess()
                         onStorageChanged()
                         showGoogleDriveFolderSelection(activity)
                     } else {
-                        // 連線失敗，提示重新授權
                         showReauthorizeDialog(activity, onSuccess, onStorageChanged)
                     }
                 } else {
-                    // 沒有 refresh token，開始 PKCE 授權流程
                     startPKCEAuthFlow(activity, onSuccess, onStorageChanged)
                 }
             } catch (e: Exception) {
@@ -166,9 +159,7 @@ class StorageSelectionDialog @Inject constructor(
         }
     }
     
-    /**
-     * 開始 PKCE 授權流程
-     */
+    /** Start PKCE auth flow */
     private suspend fun startPKCEAuthFlow(
         activity: DaggerAppCompatActivityWithResult,
         onSuccess: () -> Unit,
@@ -176,33 +167,33 @@ class StorageSelectionDialog @Inject constructor(
     ) {
         try {
             val authUrl = googleDriveManager.startPKCEAuth()
-            
-            // 打開瀏覽器進行授權
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(authUrl))
             activity.startActivity(intent)
-            
-            // 顯示等待對話框並等待授權碼
             showWaitingDialog(activity) { cancelled ->
                 if (cancelled) {
-                    // 用戶取消了授權
-                    ToastUtils.infoToast(activity, "授權已取消")
+                    ToastUtils.infoToast(activity, "Authorization cancelled")
                 } else {
-                    // 在背景等待授權碼
                     activity.lifecycleScope.launch {
-                        val authCode = googleDriveManager.waitForAuthCode(60000) // 60秒超時
-                        
+                        val authCode = googleDriveManager.waitForAuthCode(60000)
                         if (authCode != null) {
                             if (googleDriveManager.exchangeCodeForTokens(authCode)) {
                                 googleDriveManager.setStorageType(GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE)
                                 ToastUtils.infoToast(activity, rh.gs(R.string.google_drive_auth_success))
+                                // 先將 App 帶回前景，再延遲顯示資料夾清單，避免 BadTokenException
+                                bringAppToForeground(activity)
                                 onSuccess()
                                 onStorageChanged()
-                                showGoogleDriveFolderSelection(activity)
+                                activity.lifecycleScope.launch {
+                                    kotlinx.coroutines.delay(400)
+                                    try {
+                                        showGoogleDriveFolderSelection(activity)
+                                    } catch (_: Exception) { }
+                                }
                             } else {
                                 ToastUtils.errorToast(activity, rh.gs(R.string.google_drive_auth_failed))
                             }
                         } else {
-                            ToastUtils.errorToast(activity, "授權超時，請重試")
+                            ToastUtils.errorToast(activity, "Authorization timed out, please retry")
                         }
                     }
                 }
@@ -212,20 +203,24 @@ class StorageSelectionDialog @Inject constructor(
             ToastUtils.errorToast(activity, rh.gs(R.string.google_drive_auth_error, e.message))
         }
     }
+
+    private fun bringAppToForeground(activity: DaggerAppCompatActivityWithResult) {
+        try {
+            // Bring the existing activity/task to foreground instead of launching app entry activity
+            val intent = Intent(activity, activity.javaClass)
+                .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
+            activity.startActivity(intent)
+        } catch (_: Exception) { }
+    }
     
-    /**
-     * 顯示授權指引對話框
-     */
-    /**
-     * 顯示等待授權的對話框
-     */
+    /** Waiting dialog for authorization */
     private fun showWaitingDialog(
         activity: DaggerAppCompatActivityWithResult,
         onResult: (cancelled: Boolean) -> Unit
     ) {
         val dialog = AlertDialog.Builder(activity)
             .setTitle(rh.gs(R.string.google_drive_authorization))
-            .setMessage("已在瀏覽器中開啟 Google Drive 授權頁面。\n\n請在瀏覽器中完成授權，然後返回此應用程式。\n\n授權完成後此對話框會自動關閉。")
+            .setMessage("Google Drive authorization page has been opened in your browser.\n\nPlease complete the authorization, then return to this app.\n\nThis dialog will close automatically once authorization is completed.")
             .setNegativeButton(rh.gs(app.aaps.core.ui.R.string.cancel)) { _, _ ->
                 onResult(true)
             }
@@ -234,14 +229,12 @@ class StorageSelectionDialog @Inject constructor(
         
         dialog.show()
         
-        // 當授權完成時自動關閉對話框
+        // Immediately signal waiting started (dialog stays until flow finishes externally)
         onResult(false)
         dialog.dismiss()
     }
     
-    /**
-     * 顯示重新授權對話框
-     */
+    /** Reauthorize dialog */
     private fun showReauthorizeDialog(
         activity: DaggerAppCompatActivityWithResult,
         onSuccess: () -> Unit,
@@ -251,7 +244,6 @@ class StorageSelectionDialog @Inject constructor(
             .setTitle(rh.gs(R.string.google_drive_connection_failed))
             .setMessage(rh.gs(R.string.google_drive_reauthorize_message))
             .setPositiveButton(rh.gs(R.string.reauthorize)) { _, _ ->
-                // 清除舊的授權資料並重新授權
                 googleDriveManager.clearGoogleDriveSettings()
                 activity.lifecycleScope.launch {
                     startPKCEAuthFlow(activity, onSuccess, onStorageChanged)
@@ -261,9 +253,7 @@ class StorageSelectionDialog @Inject constructor(
             .show()
     }
     
-    /**
-     * 顯示 Google Drive 資料夾選擇對話框
-     */
+    /** Show Google Drive folder selection */
     private fun showGoogleDriveFolderSelection(activity: DaggerAppCompatActivityWithResult) {
         activity.lifecycleScope.launch {
             try {
@@ -271,17 +261,14 @@ class StorageSelectionDialog @Inject constructor(
                 val folderNames = mutableListOf<String>()
                 val folderIds = mutableListOf<String>()
                 
-                // 添加根目錄選項
                 folderNames.add(rh.gs(R.string.root_folder))
                 folderIds.add("root")
                 
-                // 添加現有資料夾
                 folders.forEach { folder ->
                     folderNames.add(folder.name)
                     folderIds.add(folder.id)
                 }
                 
-                // 添加創建新資料夾選項
                 folderNames.add(rh.gs(R.string.create_new_folder))
                 folderIds.add("create_new")
                 
@@ -290,11 +277,9 @@ class StorageSelectionDialog @Inject constructor(
                     .setItems(folderNames.toTypedArray()) { _, which ->
                         when {
                             which == folderNames.size - 1 -> {
-                                // 創建新資料夾
                                 showCreateFolderDialog(activity)
                             }
                             else -> {
-                                // 選擇現有資料夾
                                 val selectedFolderId = folderIds[which]
                                 googleDriveManager.setSelectedFolderId(selectedFolderId)
                                 
@@ -316,9 +301,7 @@ class StorageSelectionDialog @Inject constructor(
         }
     }
     
-    /**
-     * 顯示創建資料夾對話框
-     */
+    /** Show create folder dialog */
     private fun showCreateFolderDialog(activity: DaggerAppCompatActivityWithResult) {
         val editText = android.widget.EditText(activity)
         editText.hint = rh.gs(R.string.folder_name)
@@ -339,13 +322,10 @@ class StorageSelectionDialog @Inject constructor(
             .show()
     }
     
-    /**
-     * 創建資料夾
-     */
+    /** Create folder (support nested path) */
     private fun createFolder(activity: DaggerAppCompatActivityWithResult, folderPath: String) {
         activity.lifecycleScope.launch {
             try {
-                // 分割路徑並創建多層資料夾
                 val pathParts = folderPath.split("/").filter { it.isNotEmpty() }
                 var currentParentId = "root"
                 
