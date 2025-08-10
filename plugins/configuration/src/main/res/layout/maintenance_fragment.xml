@@ -132,13 +132,43 @@
                     android:padding="10dip"
                     app:columnCount="2">
 
+                    <app.aaps.core.ui.elements.SingleClickButton
+                        android:id="@+id/export_destination"
+                        style="@style/GrayButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:drawableTop="@drawable/ic_export_settings"
+                        android:paddingStart="0dp"
+                        android:paddingEnd="0dp"
+                        android:text="@string/export_options"
+                        android:textSize="11sp"
+                        app:layout_column="0"
+                        app:layout_columnWeight="1"
+                        app:layout_gravity="fill"
+                        app:layout_row="0" />
+
+                    <app.aaps.core.ui.elements.SingleClickButton
+                        android:id="@+id/cloud_directory"
+                        style="@style/GrayButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:drawableTop="@drawable/ic_directory"
+                        android:paddingStart="0dp"
+                        android:paddingEnd="0dp"
+                        android:text="@string/cloud_directory"
+                        android:textSize="11sp"
+                        app:layout_column="1"
+                        app:layout_columnWeight="1"
+                        app:layout_gravity="fill"
+                        app:layout_row="0" />
+
                     <FrameLayout
                         android:layout_width="0dp"
                         android:layout_height="wrap_content"
                         app:layout_column="0"
                         app:layout_columnWeight="1"
                         app:layout_gravity="fill"
-                        app:layout_row="0">
+                        app:layout_row="1">
 
                         <app.aaps.core.ui.elements.SingleClickButton
                             android:id="@+id/directory"
@@ -162,36 +192,6 @@
                             android:contentDescription="@string/google_drive_connection_error" />
 
                     </FrameLayout>
-
-                    <app.aaps.core.ui.elements.SingleClickButton
-                        android:id="@+id/cloud_directory"
-                        style="@style/GrayButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:drawableTop="@drawable/ic_directory"
-                        android:paddingStart="0dp"
-                        android:paddingEnd="0dp"
-                        android:text="@string/cloud_directory"
-                        android:textSize="11sp"
-                        app:layout_column="1"
-                        app:layout_columnWeight="1"
-                        app:layout_gravity="fill"
-                        app:layout_row="0" />
-
-                    <app.aaps.core.ui.elements.SingleClickButton
-                        android:id="@+id/export_destination"
-                        style="@style/GrayButton"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:drawableTop="@drawable/ic_export_settings"
-                        android:paddingStart="0dp"
-                        android:paddingEnd="0dp"
-                        android:text="@string/export_destination"
-                        android:textSize="11sp"
-                        app:layout_column="0"
-                        app:layout_columnWeight="1"
-                        app:layout_gravity="fill"
-                        app:layout_row="1" />
 
                     <app.aaps.core.ui.elements.SingleClickButton
                         android:id="@+id/nav_import"
