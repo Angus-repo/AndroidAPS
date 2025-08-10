@@ -73,6 +73,8 @@ import app.aaps.plugins.configuration.maintenance.dialogs.PrefImportSummaryDialo
 import app.aaps.plugins.configuration.maintenance.formats.EncryptedPrefsFormat
 import app.aaps.plugins.configuration.maintenance.googledrive.GoogleDriveManager
 import app.aaps.plugins.configuration.maintenance.googledrive.ExportDestinationDialog
+import app.aaps.plugins.configuration.maintenance.PrefsMetadataKeyImpl
+import app.aaps.plugins.configuration.maintenance.activities.CloudPrefImportListActivity
 import app.aaps.shared.impl.weardata.ZipWatchfaceFormat
 import dagger.Reusable
 import dagger.android.HasAndroidInjector
@@ -115,6 +117,11 @@ class ImportExportPrefsImpl @Inject constructor(
     private val googleDriveManager: GoogleDriveManager,
     private val exportDestinationDialog: ExportDestinationDialog
 ) : ImportExportPrefs {
+
+    companion object {
+        const val CLOUD_IMPORT_REQUEST_CODE = 1001
+        var cloudPrefsFiles: List<PrefsFile> = emptyList()
+    }
 
     override var selectedImportFile: PrefsFile? = null
 
@@ -504,42 +511,77 @@ class ImportExportPrefsImpl @Inject constructor(
     }
 
     private fun importFromGoogleDrive(activity: FragmentActivity) {
+        // 顯示加載指示器
+        val progressDialog = AlertDialog.Builder(activity)
+            .setTitle("載入雲端設定")
+            .setMessage("正在從 Google Drive 載入設定文件，請稍等...")
+            .setCancelable(false)
+            .create()
+        progressDialog.show()
+        
         activity.lifecycleScope.launch {
             try {
                 if (!googleDriveManager.testConnection()) {
+                    progressDialog.dismiss()
                     ToastUtils.errorToast(activity, rh.gs(R.string.google_drive_connection_failed))
                     return@launch
                 }
                 val files = googleDriveManager.listSettingsFiles()
                 if (files.isEmpty()) {
-                    ToastUtils.warnToast(activity, rh.gs(R.string.preferences_import_list_title))
+                    progressDialog.dismiss()
+                    ToastUtils.warnToast(activity, "No settings files found in Google Drive")
                     return@launch
                 }
 
-                val names = files.map { it.name }.toTypedArray()
-                AlertDialog.Builder(activity)
-                    .setTitle(rh.gs(R.string.preferences_import_list_title))
-                    .setItems(names) { _: DialogInterface, which: Int ->
-                        activity.lifecycleScope.launch {
-                            try {
-                                val chosen = files[which]
-                                val bytes = googleDriveManager.downloadFile(chosen.id)
-                                if (bytes == null) {
-                                    ToastUtils.errorToast(activity, rh.gs(R.string.filenotfound))
-                                    return@launch
-                                }
-                                // 準備 PrefsFile 並進入既有的導入流程
-                                selectedImportFile = PrefsFile(chosen.name, bytes.toString(Charsets.UTF_8), emptyMap<PrefsMetadataKey, PrefMetadata>())
-                                doImportSharedPreferences(activity)
-                            } catch (e: Exception) {
-                                aapsLogger.error(LTag.CORE, "Google Drive import failed", e)
-                                ToastUtils.errorToast(activity, rh.gs(R.string.google_drive_folder_error))
+                // 下載所有文件並解析元數據，就像本地文件一樣
+                val prefsFiles = mutableListOf<PrefsFile>()
+                var processedFiles = 0
+                for (file in files) {
+                    try {
+                        // 更新進度
+                        progressDialog.setMessage("正在載入 ${file.name} (${processedFiles + 1}/${files.size})...")
+                        
+                        val bytes = googleDriveManager.downloadFile(file.id)
+                        if (bytes != null) {
+                            val content = bytes.toString(Charsets.UTF_8)
+                            // 解析文件元數據
+                            val metadata = encryptedPrefsFormat.loadMetadata(content)
+                            val prefsFile = PrefsFile(file.name, content, metadata)
+                            prefsFiles.add(prefsFile)
+                        }
+                    } catch (e: Exception) {
+                        aapsLogger.warn(LTag.CORE, "Failed to load metadata for ${file.name}", e)
+                        // 如果解析元數據失敗，仍然添加文件但沒有元數據
+                        try {
+                            val bytes = googleDriveManager.downloadFile(file.id)
+                            if (bytes != null) {
+                                val content = bytes.toString(Charsets.UTF_8)
+                                val prefsFile = PrefsFile(file.name, content, emptyMap())
+                                prefsFiles.add(prefsFile)
                             }
+                        } catch (e2: Exception) {
+                            aapsLogger.error(LTag.CORE, "Failed to download ${file.name}", e2)
                         }
                     }
-                    .setNegativeButton(rh.gs(app.aaps.core.ui.R.string.cancel), null)
-                    .show()
+                    processedFiles++
+                }
+
+                progressDialog.dismiss()
+
+                if (prefsFiles.isEmpty()) {
+                    ToastUtils.warnToast(activity, "No valid settings files found in Google Drive")
+                    return@launch
+                }
+
+                // 使用 CloudPrefImportListActivity 顯示文件詳細信息
+                cloudPrefsFiles = prefsFiles // 暫存文件列表
+                val intent = Intent(activity, CloudPrefImportListActivity::class.java)
+                if (activity is DaggerAppCompatActivityWithResult) {
+                    activity.startActivityForResult(intent, CLOUD_IMPORT_REQUEST_CODE)
+                }
+                
             } catch (e: Exception) {
+                progressDialog.dismiss()
                 aapsLogger.error(LTag.CORE, "Google Drive import init failed", e)
                 ToastUtils.errorToast(activity, rh.gs(R.string.google_drive_folder_error))
             }
