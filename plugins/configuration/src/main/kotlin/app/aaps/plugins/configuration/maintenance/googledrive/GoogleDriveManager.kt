@@ -20,10 +20,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 import java.io.OutputStream
-import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
-import java.net.SocketTimeoutException
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.*
@@ -254,27 +252,24 @@ class GoogleDriveManager @Inject constructor(
             try {
                 val accessToken = getValidAccessToken()
                 if (accessToken == null) {
-                    showConnectionError("無法取得有效的存取權杖")
+                    showConnectionError("Unable to obtain a valid access token")
                     return@withContext false
                 }
-                
                 val request = Request.Builder()
                     .url("$DRIVE_API_URL/about?fields=user")
                     .header("Authorization", "Bearer $accessToken")
                     .build()
-                
                 val response = client.newCall(request).execute()
-                
                 if (response.isSuccessful) {
                     clearConnectionError()
                     return@withContext true
                 } else {
-                    showConnectionError("Google Drive 連線測試失敗")
+                    showConnectionError("Google Drive connection test failed")
                     return@withContext false
                 }
             } catch (e: Exception) {
                 aapsLogger.error(LTag.CORE, "Error testing Google Drive connection", e)
-                showConnectionError("無法連接到 Google Drive: ${e.message}")
+                showConnectionError("Unable to connect to Google Drive: ${'$'}{e.message}")
                 false
             }
         }
@@ -288,44 +283,34 @@ class GoogleDriveManager @Inject constructor(
             try {
                 val accessToken = getValidAccessToken()
                 if (accessToken == null) {
-                    showConnectionError("無法取得有效的存取權杖")
+                    showConnectionError("Unable to obtain a valid access token")
                     return@withContext emptyList()
                 }
-                
                 val url = "$DRIVE_API_URL/files?q=mimeType='application/vnd.google-apps.folder' and '$parentId' in parents and trashed=false&fields=files(id,name)"
-                
                 val request = Request.Builder()
                     .url(url)
                     .header("Authorization", "Bearer $accessToken")
                     .build()
-                
                 val response = client.newCall(request).execute()
                 val responseBody = response.body?.string() ?: ""
-                
                 if (response.isSuccessful) {
                     clearConnectionError()
                     val jsonResponse = JSONObject(responseBody)
                     val files = jsonResponse.getJSONArray("files")
                     val folders = mutableListOf<DriveFolder>()
-                    
                     for (i in 0 until files.length()) {
                         val file = files.getJSONObject(i)
-                        folders.add(
-                            DriveFolder(
-                                id = file.getString("id"),
-                                name = file.getString("name")
-                            )
-                        )
+                        folders.add(DriveFolder(id = file.getString("id"), name = file.getString("name")))
                     }
-                    
                     return@withContext folders
                 } else {
-                    showConnectionError("無法列出 Google Drive 資料夾")
+                    aapsLogger.error(LTag.CORE, "List folders failed: ${'$'}{response.code} ${'$'}{response.message} body=${'$'}responseBody")
+                    showConnectionError("Failed to list Google Drive folders")
                     return@withContext emptyList()
                 }
             } catch (e: Exception) {
                 aapsLogger.error(LTag.CORE, "Error listing Google Drive folders", e)
-                showConnectionError("列出資料夾時發生錯誤: ${e.message}")
+                showConnectionError("Error listing folders: ${'$'}{e.message}")
                 emptyList()
             }
         }
@@ -372,58 +357,56 @@ class GoogleDriveManager @Inject constructor(
     }
     
     /**
-     * 上傳文件到 Google Drive
+     * Upload file to Google Drive (multipart/related)
      */
     suspend fun uploadFile(fileName: String, fileContent: ByteArray, mimeType: String = "application/octet-stream"): String? {
         return withContext(Dispatchers.IO) {
             try {
                 val accessToken = getValidAccessToken()
                 if (accessToken == null) {
-                    showConnectionError("無法取得有效的存取權杖")
+                    showConnectionError("Unable to obtain a valid access token")
                     return@withContext null
                 }
-                
                 val folderId = getSelectedFolderId().ifEmpty { "root" }
-                
-                // 創建文件元數據
-                val metadata = JSONObject().apply {
+
+                // Metadata JSON body with its own Content-Type
+                val metadataJson = JSONObject().apply {
                     put("name", fileName)
                     put("parents", JSONArray().put(folderId))
-                }
-                
-                // 構建多部分請求
-                val boundary = "BOUNDARY_${System.currentTimeMillis()}"
-                val body = buildString {
-                    append("--").append(boundary).append("\r\n")
-                    append("Content-Type: application/json; charset=UTF-8\r\n\r\n")
-                    append(metadata.toString()).append("\r\n")
-                    append("--").append(boundary).append("\r\n")
-                    append("Content-Type: ").append(mimeType).append("\r\n\r\n")
-                }.toByteArray() + fileContent + "\r\n--$boundary--\r\n".toByteArray()
-                
-                val request = Request.Builder()
-                    .url("$UPLOAD_URL/files?uploadType=multipart")
-                    .header("Authorization", "Bearer $accessToken")
-                    .header("Content-Type", "multipart/related; boundary=$boundary")
-                    .post(body.toRequestBody())
+                }.toString()
+                val metadataBody = metadataJson.toRequestBody("application/json; charset=UTF-8".toMediaType())
+
+                // File body with its own Content-Type
+                val mediaBody = fileContent.toRequestBody(mimeType.toMediaType())
+
+                // Important: Do NOT add "Content-Type" as a header in addPart(); OkHttp forbids it.
+                val multipart = MultipartBody.Builder()
+                    .setType("multipart/related".toMediaType())
+                    .addPart(metadataBody)
+                    .addPart(mediaBody)
                     .build()
-                
+
+                val request = Request.Builder()
+                    .url("$UPLOAD_URL/files?uploadType=multipart&fields=id")
+                    .header("Authorization", "Bearer $accessToken")
+                    .post(multipart)
+                    .build()
+
                 val response = client.newCall(request).execute()
-                
-                if (response.isSuccessful) {
-                    val responseBody = response.body?.string()
-                    val jsonResponse = JSONObject(responseBody ?: "{}")
+                val responseBodyStr = response.body?.string() ?: ""
+
+                return@withContext if (response.isSuccessful) {
                     clearConnectionError()
-                    return@withContext jsonResponse.optString("id")
+                    val jsonResponse = JSONObject(responseBodyStr.ifEmpty { "{}" })
+                    jsonResponse.optString("id").takeIf { it.isNotEmpty() }
                 } else {
-                    val errorMessage = "上傳文件失敗: ${response.message}"
-                    aapsLogger.error(LTag.CORE, errorMessage)
-                    showConnectionError(errorMessage)
-                    return@withContext null
+                    aapsLogger.error(LTag.CORE, "Drive upload failed: ${'$'}{response.code} ${'$'}{response.message} body=${'$'}responseBodyStr")
+                    showConnectionError("Upload failed: ${'$'}{response.code}")
+                    null
                 }
             } catch (e: Exception) {
                 aapsLogger.error(LTag.CORE, "Error uploading file to Google Drive", e)
-                showConnectionError("上傳文件時發生錯誤: ${e.message}")
+                showConnectionError("Error uploading file: ${'$'}{e.message}")
                 null
             }
         }
@@ -684,12 +667,23 @@ class GoogleDriveManager @Inject constructor(
                 500 -> "Internal Server Error"
                 else -> "Unknown"
             }
-            
+            val autoCloseScript = if (statusCode == 200) """
+                <script>
+                    // Try to close the tab automatically
+                    window.close();
+                    // Fallbacks
+                    setTimeout(function(){
+                        window.open('', '_self');
+                        window.close();
+                    }, 500);
+                </script>
+            """ else ""
             val htmlContent = """
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <title>AAPS Google Drive Authorization</title>
+                    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
                         .success { color: green; }
@@ -698,18 +692,17 @@ class GoogleDriveManager @Inject constructor(
                 </head>
                 <body>
                     <h1>AAPS Google Drive Authorization</h1>
-                    <p class="${if (statusCode == 200) "success" else "error"}">$message</p>
+                    <p class=\"${'$'}{if (statusCode == 200) "success" else "error"}\">${'$'}message</p>
+                    ${'$'}autoCloseScript
                 </body>
                 </html>
             """.trimIndent()
-            
-            val response = "HTTP/1.1 $statusCode $statusText\r\n" +
+            val response = "HTTP/1.1 ${'$'}statusCode ${'$'}statusText\r\n" +
                           "Content-Type: text/html; charset=UTF-8\r\n" +
-                          "Content-Length: ${htmlContent.toByteArray().size}\r\n" +
+                          "Content-Length: ${'$'}{htmlContent.toByteArray().size}\r\n" +
                           "Connection: close\r\n" +
                           "\r\n" +
                           htmlContent
-            
             output.write(response.toByteArray())
             output.flush()
         } catch (e: Exception) {
@@ -798,13 +791,13 @@ class GoogleDriveManager @Inject constructor(
         try {
             val accessToken = getValidAccessToken() ?: return@withContext null
             val request = Request.Builder()
-                .url("$DRIVE_API_URL/files/$fileId?alt=media")
+                .url("$DRIVE_API_URL/files/${'$'}fileId?alt=media")
                 .header("Authorization", "Bearer $accessToken")
                 .build()
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
                 val msg = response.body?.string()
-                aapsLogger.error(LTag.CORE, "Failed to download file: $msg")
+                aapsLogger.error(LTag.CORE, "Failed to download file: ${'$'}msg")
                 showConnectionError("Failed to download file")
                 return@withContext null
             }
@@ -812,7 +805,7 @@ class GoogleDriveManager @Inject constructor(
             response.body?.bytes()
         } catch (e: Exception) {
             aapsLogger.error(LTag.CORE, "Error downloading file", e)
-            showConnectionError("Error downloading file: ${e.message}")
+            showConnectionError("Error downloading file: ${'$'}{e.message}")
             null
         }
     }
