@@ -219,9 +219,24 @@ class MaintenanceFragment : DaggerFragment() {
 
     override fun onResume() {
         super.onResume()
+        // 檢查並恢復 Google Drive 設定（防止 app 更新後設定丟失）
+        checkAndRestoreGoogleDriveSettings()
+        
         if (inMenu) queryProtection() else {
             updateProtectedUi()
             updateStorageErrorState()
+        }
+    }
+    
+    /**
+     * 檢查並恢復 Google Drive 設定
+     */
+    private fun checkAndRestoreGoogleDriveSettings() {
+        try {
+            // 觸發 getStorageType() 中的自動恢復邏輯
+            googleDriveManager.getStorageType()
+        } catch (e: Exception) {
+            aapsLogger.warn(LTag.CORE, "Failed to check Google Drive settings", e)
         }
     }
 

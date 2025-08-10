@@ -83,10 +83,21 @@ class GoogleDriveManager @Inject constructor(
     }
     
     /**
-     * 獲取當前儲存類型
+     * 獲取當前儲存類型，確保有預設值
      */
     fun getStorageType(): String {
-        return sp.getString(PREF_GOOGLE_DRIVE_STORAGE_TYPE, STORAGE_TYPE_LOCAL)
+        val storageType = sp.getString(PREF_GOOGLE_DRIVE_STORAGE_TYPE, STORAGE_TYPE_LOCAL)
+        // 如果有 refresh token 但儲存類型是 local，可能是設定被重設，嘗試恢復
+        if (storageType == STORAGE_TYPE_LOCAL && hasValidRefreshToken()) {
+            // 檢查是否有有效的資料夾 ID
+            val folderId = sp.getString(PREF_GOOGLE_DRIVE_FOLDER_ID, "")
+            if (folderId.isNotEmpty()) {
+                aapsLogger.info(LTag.CORE, "Restoring Google Drive storage type from token presence")
+                sp.putString(PREF_GOOGLE_DRIVE_STORAGE_TYPE, STORAGE_TYPE_GOOGLE_DRIVE)
+                return STORAGE_TYPE_GOOGLE_DRIVE
+            }
+        }
+        return storageType
     }
     
     /**
