@@ -40,6 +40,7 @@ import app.aaps.plugins.configuration.databinding.MaintenanceFragmentBinding
 import app.aaps.plugins.configuration.maintenance.activities.LogSettingActivity
 import app.aaps.plugins.configuration.maintenance.googledrive.GoogleDriveManager
 import app.aaps.plugins.configuration.maintenance.googledrive.StorageSelectionDialog
+import app.aaps.plugins.configuration.maintenance.googledrive.ExportDestinationDialog
 import dagger.android.support.DaggerFragment
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
@@ -68,6 +69,7 @@ class MaintenanceFragment : DaggerFragment() {
     @Inject lateinit var fileListProvider: FileListProvider
     @Inject lateinit var googleDriveManager: GoogleDriveManager
     @Inject lateinit var storageSelectionDialog: StorageSelectionDialog
+    @Inject lateinit var exportDestinationDialog: ExportDestinationDialog
 
     private val disposable = CompositeDisposable()
     private var inMenu = false
@@ -191,6 +193,15 @@ class MaintenanceFragment : DaggerFragment() {
                     onGoogleDriveSelected = { /* 已在對話框內處理授權與資料夾選擇 */ },
                     onStorageChanged = { updateStorageErrorState() }
                 )
+            }
+        }
+        
+        // 匯出目的地：設定各項匯出功能的目的地
+        binding.exportDestination.setOnClickListener {
+            (requireActivity() as? DaggerAppCompatActivityWithResult)?.let { act ->
+                exportDestinationDialog.showExportDestinationDialog(act) {
+                    // Settings changed callback if needed
+                }
             }
         }
         binding.navLogsettings.setOnClickListener { startActivity(Intent(activity, LogSettingActivity::class.java)) }

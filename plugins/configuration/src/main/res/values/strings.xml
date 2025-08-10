@@ -51,7 +51,7 @@
     <string name="identification">Identification (email, FB or Discord nick etc)</string>
     
     <!-- Storage selection -->
-    <string name="storage_local_description">將設定儲存在本機選定的資料夾中</string>
+    <string name="storage_local_description">不使用雲端儲存，使用本地儲存</string>
     <string name="storage_google_drive_description">將設定同步到 Google Drive 雲端儲存</string>
     
     <!-- Export/Import messages -->
@@ -230,6 +230,15 @@
     <string name="folder_creation_failed">Failed to create folder: %1$s</string>
     <string name="folder_created_successfully">Folder created successfully: %1$s</string>
     <string name="folder_creation_error">Error creating folder</string>
-    <string name="local_directory">Local directory</string>
-    <string name="cloud_directory">Cloud directory</string>
+    <string name="local_directory">不使用</string>
+    <string name="cloud_directory">雲端目錄</string>
+    
+    <!-- Export destination -->
+    <string name="export_destination">匯出目的地</string>
+    <string name="log_export_option">Log (日誌)</string>
+    <string name="user_settings_export_option">使用者設定</string>
+    <string name="user_entries_csv_export_option">匯出使用者輸入到Excel(CSV)</string>
+    <string name="email_option">電子郵件</string>
+    <string name="local_storage_option">本地目錄</string>
+    <string name="cloud_storage_option">雲端目錄</string>
 </resources>
