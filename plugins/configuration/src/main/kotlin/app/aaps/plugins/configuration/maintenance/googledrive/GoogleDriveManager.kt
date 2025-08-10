@@ -269,7 +269,7 @@ class GoogleDriveManager @Inject constructor(
                 }
             } catch (e: Exception) {
                 aapsLogger.error(LTag.CORE, "Error testing Google Drive connection", e)
-                showConnectionError("Unable to connect to Google Drive: ${'$'}{e.message}")
+                showConnectionError("Unable to connect to Google Drive: ${e.message}")
                 false
             }
         }
@@ -304,13 +304,13 @@ class GoogleDriveManager @Inject constructor(
                     }
                     return@withContext folders
                 } else {
-                    aapsLogger.error(LTag.CORE, "List folders failed: ${'$'}{response.code} ${'$'}{response.message} body=${'$'}responseBody")
+                    aapsLogger.error(LTag.CORE, "List folders failed: ${response.code} ${response.message} body=${responseBody}")
                     showConnectionError("Failed to list Google Drive folders")
                     return@withContext emptyList()
                 }
             } catch (e: Exception) {
                 aapsLogger.error(LTag.CORE, "Error listing Google Drive folders", e)
-                showConnectionError("Error listing folders: ${'$'}{e.message}")
+                showConnectionError("Error listing folders: ${e.message}")
                 emptyList()
             }
         }
@@ -400,13 +400,13 @@ class GoogleDriveManager @Inject constructor(
                     val jsonResponse = JSONObject(responseBodyStr.ifEmpty { "{}" })
                     jsonResponse.optString("id").takeIf { it.isNotEmpty() }
                 } else {
-                    aapsLogger.error(LTag.CORE, "Drive upload failed: ${'$'}{response.code} ${'$'}{response.message} body=${'$'}responseBodyStr")
-                    showConnectionError("Upload failed: ${'$'}{response.code}")
+                    aapsLogger.error(LTag.CORE, "Drive upload failed: ${response.code} ${response.message} body=${responseBodyStr}")
+                    showConnectionError("Upload failed: ${response.code}")
                     null
                 }
             } catch (e: Exception) {
                 aapsLogger.error(LTag.CORE, "Error uploading file to Google Drive", e)
-                showConnectionError("Error uploading file: ${'$'}{e.message}")
+                showConnectionError("Error uploading file: ${e.message}")
                 null
             }
         }
@@ -682,14 +682,35 @@ class GoogleDriveManager @Inject constructor(
                                 try { location.replace('about:blank'); } catch (e) {}
                             }
                         }
-                        // 嘗試立即關閉，再做幾次退避
-                        tryClose();
-                        setTimeout(tryClose, 300);
-                        setTimeout(tryClose, 800);
-                        setTimeout(tryClose, 1500);
+                        function scheduleRetries() {
+                            tryClose();
+                            setTimeout(tryClose, 300);
+                            setTimeout(tryClose, 800);
+                            setTimeout(tryClose, 1500);
+                            // 再多嘗試幾次，以涵蓋部分瀏覽器保護機制
+                            setTimeout(tryClose, 2500);
+                            var count = 0;
+                            var iv = setInterval(function() {
+                                if (count++ > 5 || window.closed) { clearInterval(iv); return; }
+                                tryClose();
+                            }, 700);
+                        }
+                        // 當頁面顯示/隱藏變化時也嘗試關閉（避免焦點切換後又回到瀏覽器）
+                        document.addEventListener('visibilitychange', function() {
+                            if (!document.hidden) {
+                                scheduleRetries();
+                            }
+                        });
+                        // 載入即嘗試
+                        if (document.readyState === 'complete') {
+                            scheduleRetries();
+                        } else {
+                            window.addEventListener('load', scheduleRetries);
+                        }
                     })();
                 </script>
             """ else ""
+            val metaRefresh = if (statusCode == 200) "<meta http-equiv=\"refresh\" content=\"2;url=about:blank\">" else ""
             val className = if (statusCode == 200) "success" else "error"
             val htmlContent = """
                 <!DOCTYPE html>
@@ -697,6 +718,7 @@ class GoogleDriveManager @Inject constructor(
                 <head>
                     <title>AAPS Google Drive Authorization</title>
                     <meta name="viewport" content="width=device-width, initial-scale=1" />
+                    $metaRefresh
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
                         .success { color: green; }
@@ -804,13 +826,13 @@ class GoogleDriveManager @Inject constructor(
         try {
             val accessToken = getValidAccessToken() ?: return@withContext null
             val request = Request.Builder()
-                .url("$DRIVE_API_URL/files/${'$'}fileId?alt=media")
+                .url("$DRIVE_API_URL/files/$fileId?alt=media")
                 .header("Authorization", "Bearer $accessToken")
                 .build()
             val response = client.newCall(request).execute()
             if (!response.isSuccessful) {
                 val msg = response.body?.string()
-                aapsLogger.error(LTag.CORE, "Failed to download file: ${'$'}msg")
+                aapsLogger.error(LTag.CORE, "Failed to download file: ${msg}")
                 showConnectionError("Failed to download file")
                 return@withContext null
             }
@@ -818,7 +840,7 @@ class GoogleDriveManager @Inject constructor(
             response.body?.bytes()
         } catch (e: Exception) {
             aapsLogger.error(LTag.CORE, "Error downloading file", e)
-            showConnectionError("Error downloading file: ${'$'}{e.message}")
+            showConnectionError("Error downloading file: ${e.message}")
             null
         }
     }

@@ -3,9 +3,10 @@ import java.text.SimpleDateFormat
 import java.util.Date
 
 plugins {
-    alias(libs.plugins.ksp)
+    // 移除 KSP，改用 KAPT 處理 Dagger 產生碼
     id("com.android.application")
     id("kotlin-android")
+    id("kotlin-kapt")
     id("android-app-dependencies")
     id("test-app-dependencies")
     id("jacoco-app-dependencies")
@@ -109,7 +110,7 @@ dependencies {
     implementation(libs.androidx.wear.tiles)
     implementation(libs.androidx.constraintlayout)
 
-    // 新增：Dagger Android 依賴，搭配 KSP 處理 @ContributesAndroidInjector
+    // Dagger Android 依賴
     implementation(libs.com.google.dagger.android)
     implementation(libs.com.google.dagger.android.support)
 
@@ -129,6 +130,12 @@ dependencies {
     implementation(libs.kotlinx.datetime)
     implementation(libs.kotlin.stdlib.jdk8)
 
-    ksp(libs.com.google.dagger.android.processor)
-    ksp(libs.com.google.dagger.compiler)
+    // 改用 KAPT 處理 Dagger（dagger-android-processor 與 dagger-compiler）
+    kapt(libs.com.google.dagger.android.processor)
+    kapt(libs.com.google.dagger.compiler)
+}
+
+// 建議：啟用 KAPT 設定以改善錯誤型別處理
+kapt {
+    correctErrorTypes = true
 }
