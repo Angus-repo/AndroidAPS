@@ -512,23 +512,23 @@ class GoogleDriveManager @Inject constructor(
             serverJob = CoroutineScope(Dispatchers.IO).launch {
                 try {
                     aapsLogger.debug(LTag.CORE, "Local OAuth server started on port $REDIRECT_PORT")
-                    
-                    while (!localServer?.isClosed!! && isActive) {
+
+                    val server = localServer ?: return@launch
+                    while (isActive && !server.isClosed) {
                         try {
-                            val clientSocket = localServer?.accept()
+                            val clientSocket = try { server.accept() } catch (toe: java.net.SocketTimeoutException) { null }
                             clientSocket?.let { socket ->
                                 launch { handleHttpRequest(socket) }
                             }
-                        } catch (e: java.net.SocketTimeoutException) {
-                            // 超時是正常的，繼續循環
                         } catch (e: Exception) {
-                            if (!localServer?.isClosed!!) {
+                            if (!server.isClosed) {
                                 aapsLogger.error(LTag.CORE, "Error accepting connection", e)
                             }
                         }
                     }
                 } catch (e: Exception) {
-                    if (!localServer?.isClosed!!) {
+                    val server = localServer
+                    if (server != null && !server.isClosed) {
                         aapsLogger.error(LTag.CORE, "Server error", e)
                     }
                 }
@@ -669,21 +669,34 @@ class GoogleDriveManager @Inject constructor(
             }
             val autoCloseScript = if (statusCode == 200) """
                 <script>
-                    // Try to close the tab automatically
-                    window.close();
-                    // Fallbacks
-                    setTimeout(function(){
-                        window.open('', '_self');
-                        window.close();
-                    }, 500);
+                    (function() {
+                        function tryClose() {
+                            try { window.close(); } catch (e) {}
+                            if (!window.closed) {
+                                try { window.open('', '_self'); window.close(); } catch (e) {}
+                            }
+                            if (!window.closed) {
+                                try { history.go(-1); } catch (e) {}
+                            }
+                            if (!window.closed) {
+                                try { location.replace('about:blank'); } catch (e) {}
+                            }
+                        }
+                        // 嘗試立即關閉，再做幾次退避
+                        tryClose();
+                        setTimeout(tryClose, 300);
+                        setTimeout(tryClose, 800);
+                        setTimeout(tryClose, 1500);
+                    })();
                 </script>
             """ else ""
+            val className = if (statusCode == 200) "success" else "error"
             val htmlContent = """
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <title>AAPS Google Drive Authorization</title>
-                    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1" />
                     <style>
                         body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
                         .success { color: green; }
@@ -692,14 +705,14 @@ class GoogleDriveManager @Inject constructor(
                 </head>
                 <body>
                     <h1>AAPS Google Drive Authorization</h1>
-                    <p class=\"${'$'}{if (statusCode == 200) "success" else "error"}\">${'$'}message</p>
-                    ${'$'}autoCloseScript
+                    <p class="$className">$message</p>
+                    $autoCloseScript
                 </body>
                 </html>
             """.trimIndent()
-            val response = "HTTP/1.1 ${'$'}statusCode ${'$'}statusText\r\n" +
+            val response = "HTTP/1.1 $statusCode $statusText\r\n" +
                           "Content-Type: text/html; charset=UTF-8\r\n" +
-                          "Content-Length: ${'$'}{htmlContent.toByteArray().size}\r\n" +
+                          "Content-Length: ${htmlContent.toByteArray().size}\r\n" +
                           "Connection: close\r\n" +
                           "\r\n" +
                           htmlContent
