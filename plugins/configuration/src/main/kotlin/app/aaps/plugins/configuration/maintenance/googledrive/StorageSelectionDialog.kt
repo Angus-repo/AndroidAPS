@@ -73,8 +73,8 @@ class StorageSelectionDialog @Inject constructor(
             val wasGoogleDrive = googleDriveManager.getStorageType() == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE
             if (wasGoogleDrive) {
                 AlertDialog.Builder(activity)
-                    .setTitle("Switch to Local")
-                    .setMessage("Switch to local storage. Clear cloud authorization?")
+                    .setTitle("切換到不使用雲端")
+                    .setMessage("切換到不使用雲端儲存。是否清除雲端授權？")
                     .setPositiveButton(rh.gs(app.aaps.core.ui.R.string.yes)) { _, _ ->
                         // Yes: clear cloud tokens and switch to local, keep dialog open
                         googleDriveManager.clearGoogleDriveSettings()

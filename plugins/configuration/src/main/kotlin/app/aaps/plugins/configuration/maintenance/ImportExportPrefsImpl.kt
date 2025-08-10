@@ -72,6 +72,7 @@ import app.aaps.plugins.configuration.maintenance.data.PrefsStatusImpl
 import app.aaps.plugins.configuration.maintenance.dialogs.PrefImportSummaryDialog
 import app.aaps.plugins.configuration.maintenance.formats.EncryptedPrefsFormat
 import app.aaps.plugins.configuration.maintenance.googledrive.GoogleDriveManager
+import app.aaps.plugins.configuration.maintenance.googledrive.ExportDestinationDialog
 import app.aaps.shared.impl.weardata.ZipWatchfaceFormat
 import dagger.Reusable
 import dagger.android.HasAndroidInjector
@@ -111,7 +112,8 @@ class ImportExportPrefsImpl @Inject constructor(
     private val dataWorkerStorage: DataWorkerStorage,
     private val activePlugin: ActivePlugin,
     private val configBuilder: ConfigBuilder,
-    private val googleDriveManager: GoogleDriveManager
+    private val googleDriveManager: GoogleDriveManager,
+    private val exportDestinationDialog: ExportDestinationDialog
 ) : ImportExportPrefs {
 
     override var selectedImportFile: PrefsFile? = null
@@ -340,6 +342,13 @@ class ImportExportPrefsImpl @Inject constructor(
     }
 
     private fun exportSharedPreferences(activity: FragmentActivity) {
+        // Check export destination preference for user settings
+        if (exportDestinationDialog.isSettingsCloudEnabled() && 
+            googleDriveManager.getStorageType() == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE) {
+            exportToGoogleDrive(activity)
+            return
+        }
+        
         // 依儲存型態分支；僅本地流程需要檢查 AAPS 目錄
         if (googleDriveManager.getStorageType() == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE) {
             exportToGoogleDrive(activity)
@@ -654,14 +663,27 @@ class ImportExportPrefsImpl @Inject constructor(
         @Inject lateinit var userEntryPresentationHelper: UserEntryPresentationHelper
         @Inject lateinit var storage: Storage
         @Inject lateinit var persistenceLayer: PersistenceLayer
+        @Inject lateinit var googleDriveManager: GoogleDriveManager
+        @Inject lateinit var exportDestinationDialog: ExportDestinationDialog
 
         override suspend fun doWorkAndLog(): Result {
             val entries = persistenceLayer.getUserEntryFilteredDataFromTime(MidnightTime.calc() - T.days(90).msecs()).blockingGet()
+            
+            // Check if CSV should be exported to cloud
+            if (exportDestinationDialog.isCsvCloudEnabled() && 
+                googleDriveManager.getStorageType() == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE) {
+                return exportToCloud(entries)
+            } else {
+                return exportToLocal(entries)
+            }
+        }
+        
+        private suspend fun exportToLocal(userEntries: List<UE>): Result {
             prefFileList.ensureExportDirExists()
             val newFile = prefFileList.newExportCsvFile() ?: return Result.failure()
             var ret = Result.success()
             try {
-                saveCsv(newFile, entries)
+                saveCsv(newFile, userEntries)
                 ToastUtils.okToast(context, rh.gs(R.string.ue_exported))
             } catch (e: FileNotFoundException) {
                 ToastUtils.errorToast(context, rh.gs(R.string.filenotfound) + " " + newFile)
@@ -673,6 +695,27 @@ class ImportExportPrefsImpl @Inject constructor(
                 ret = Result.failure(workDataOf("Error" to "Error IOException"))
             }
             return ret
+        }
+        
+        private suspend fun exportToCloud(userEntries: List<UE>): Result {
+            try {
+                val contents = userEntryPresentationHelper.userEntriesToCsv(userEntries)
+                val fileName = "UserEntries_${org.joda.time.LocalDateTime.now().toString(org.joda.time.format.DateTimeFormat.forPattern("yyyy-MM-dd_HHmmss"))}.csv"
+                
+                val uploadedFileId = googleDriveManager.uploadFile(fileName, contents.toByteArray(Charsets.UTF_8), "text/csv")
+                
+                if (uploadedFileId != null) {
+                    ToastUtils.okToast(context, "User Entries CSV已成功上傳到 Google Drive")
+                    return Result.success()
+                } else {
+                    ToastUtils.errorToast(context, "上傳 User Entries CSV 到 Google Drive 失敗")
+                    return Result.failure(workDataOf("Error" to "Cloud upload failed"))
+                }
+            } catch (e: Exception) {
+                aapsLogger.error(LTag.CORE, "Error uploading CSV to cloud", e)
+                ToastUtils.errorToast(context, "上傳 CSV 到雲端時發生錯誤")
+                return Result.failure(workDataOf("Error" to "Exception: ${e.message}"))
+            }
         }
 
         private fun saveCsv(file: DocumentFile, userEntries: List<UE>) {
