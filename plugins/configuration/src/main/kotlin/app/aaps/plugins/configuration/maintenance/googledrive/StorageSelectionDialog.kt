@@ -16,6 +16,8 @@ import app.aaps.core.interfaces.resources.ResourceHelper
 import app.aaps.core.ui.toast.ToastUtils
 import app.aaps.plugins.configuration.R
 import app.aaps.plugins.configuration.maintenance.MaintenancePlugin
+import app.aaps.plugins.configuration.activities.SingleFragmentActivity
+import app.aaps.core.interfaces.plugin.ActivePlugin
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,7 +27,8 @@ class StorageSelectionDialog @Inject constructor(
     private val aapsLogger: AAPSLogger,
     private val rh: ResourceHelper,
     private val googleDriveManager: GoogleDriveManager,
-    private val maintenancePlugin: MaintenancePlugin
+    private val maintenancePlugin: MaintenancePlugin,
+    private val activePlugin: ActivePlugin
 ) {
     
     /**
@@ -179,8 +182,8 @@ class StorageSelectionDialog @Inject constructor(
                             if (googleDriveManager.exchangeCodeForTokens(authCode)) {
                                 googleDriveManager.setStorageType(GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE)
                                 ToastUtils.infoToast(activity, rh.gs(R.string.google_drive_auth_success))
-                                // 先將 App 帶回前景，再延遲顯示資料夾清單，避免 BadTokenException
-                                bringAppToForeground(activity)
+                                // 明確打開維護頁，避免被主頁面搶回
+                                openMaintenanceScreen(activity)
                                 onSuccess()
                                 onStorageChanged()
                                 activity.lifecycleScope.launch {
@@ -204,12 +207,43 @@ class StorageSelectionDialog @Inject constructor(
         }
     }
 
+    /**
+     * 明確開啟MaintenanceFragment所在的SingleFragmentActivity，並延遲再次強化一次，
+     * 避免瀏覽器關閉/系統回到上一App時把焦點帶回MainActivity。
+     */
+    private fun openMaintenanceScreen(activity: DaggerAppCompatActivityWithResult) {
+        try {
+            val list = activePlugin.getPluginsList()
+            val idx = list.indexOfFirst { it is MaintenancePlugin }
+            if (idx >= 0) {
+                val intent = Intent(activity, SingleFragmentActivity::class.java)
+                    .setAction("StorageSelectionDialog")
+                    .putExtra("plugin", idx)
+                    .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                activity.startActivity(intent)
+                // 再延遲一次，抵消可能晚來的系統回前景動作
+                activity.window?.decorView?.postDelayed({
+                    try { activity.startActivity(intent) } catch (_: Exception) { }
+                }, 1200)
+            } else {
+                // 後備：若找不到索引，仍嘗試把當前Activity帶到前景
+                bringAppToForeground(activity)
+            }
+        } catch (_: Exception) { }
+    }
+
+    // 後備方法：將應用帶回前景（使用啟動 Intent，並以兩次 REORDER_TO_FRONT 穩定焦點）
     private fun bringAppToForeground(activity: DaggerAppCompatActivityWithResult) {
         try {
-            // Bring the existing activity/task to foreground instead of launching app entry activity
-            val intent = Intent(activity, activity.javaClass)
-                .addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-            activity.startActivity(intent)
+            val launchIntent = activity.packageManager.getLaunchIntentForPackage(activity.packageName)?.apply {
+                addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+            }
+            if (launchIntent != null) {
+                activity.startActivity(launchIntent)
+                activity.window?.decorView?.postDelayed({
+                    try { activity.startActivity(launchIntent) } catch (_: Exception) { }
+                }, 800)
+            }
         } catch (_: Exception) { }
     }
     
