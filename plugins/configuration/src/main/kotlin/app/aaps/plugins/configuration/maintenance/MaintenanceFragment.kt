@@ -38,6 +38,9 @@ import app.aaps.plugins.configuration.R
 import app.aaps.plugins.configuration.activities.DaggerAppCompatActivityWithResult
 import app.aaps.plugins.configuration.databinding.MaintenanceFragmentBinding
 import app.aaps.plugins.configuration.maintenance.activities.LogSettingActivity
+import app.aaps.plugins.configuration.maintenance.googledrive.GoogleDriveManager
+import app.aaps.plugins.configuration.maintenance.googledrive.StorageSelectionDialog
+import app.aaps.plugins.configuration.maintenance.googledrive.ExportDestinationDialog
 import dagger.android.support.DaggerFragment
 import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.disposables.CompositeDisposable
@@ -64,6 +67,9 @@ class MaintenanceFragment : DaggerFragment() {
     @Inject lateinit var uiInteraction: UiInteraction
     @Inject lateinit var activePlugin: ActivePlugin
     @Inject lateinit var fileListProvider: FileListProvider
+    @Inject lateinit var googleDriveManager: GoogleDriveManager
+    @Inject lateinit var storageSelectionDialog: StorageSelectionDialog
+    @Inject lateinit var exportDestinationDialog: ExportDestinationDialog
 
     private val disposable = CompositeDisposable()
     private var inMenu = false
@@ -172,8 +178,31 @@ class MaintenanceFragment : DaggerFragment() {
                 importExportPrefs.importSharedPreferences(activity as FragmentActivity)
             }
         }
+        // 本地目錄：只用於挑選 AAPS 基礎資料夾
         binding.directory.setOnClickListener {
-            maintenancePlugin.selectAapsDirectory(requireActivity() as DaggerAppCompatActivityWithResult)
+            (requireActivity() as? DaggerAppCompatActivityWithResult)?.let { act ->
+                maintenancePlugin.selectAapsDirectory(act)
+            }
+        }
+        // 雲端目錄：選擇不使用或 Google Drive
+        binding.cloudDirectory.setOnClickListener {
+            (requireActivity() as? DaggerAppCompatActivityWithResult)?.let { act ->
+                storageSelectionDialog.showStorageSelectionDialog(
+                    act,
+                    onLocalSelected = { /* 選擇不使用雲端：將儲存型態設為 local，無動作 */ },
+                    onGoogleDriveSelected = { /* 已在對話框內處理授權與資料夾選擇 */ },
+                    onStorageChanged = { updateStorageErrorState() }
+                )
+            }
+        }
+        
+        // 匯出目的地：設定各項匯出功能的目的地
+        binding.exportDestination.setOnClickListener {
+            (requireActivity() as? DaggerAppCompatActivityWithResult)?.let { act ->
+                exportDestinationDialog.showExportDestinationDialog(act) {
+                    // Settings changed callback if needed
+                }
+            }
         }
         binding.navLogsettings.setOnClickListener { startActivity(Intent(activity, LogSettingActivity::class.java)) }
         binding.exportCsv.setOnClickListener {
@@ -190,7 +219,25 @@ class MaintenanceFragment : DaggerFragment() {
 
     override fun onResume() {
         super.onResume()
-        if (inMenu) queryProtection() else updateProtectedUi()
+        // 檢查並恢復 Google Drive 設定（防止 app 更新後設定丟失）
+        checkAndRestoreGoogleDriveSettings()
+        
+        if (inMenu) queryProtection() else {
+            updateProtectedUi()
+            updateStorageErrorState()
+        }
+    }
+    
+    /**
+     * 檢查並恢復 Google Drive 設定
+     */
+    private fun checkAndRestoreGoogleDriveSettings() {
+        try {
+            // 觸發 getStorageType() 中的自動恢復邏輯
+            googleDriveManager.getStorageType()
+        } catch (e: Exception) {
+            aapsLogger.warn(LTag.CORE, "Failed to check Google Drive settings", e)
+        }
     }
 
     @Synchronized
@@ -204,6 +251,16 @@ class MaintenanceFragment : DaggerFragment() {
         val isLocked = protectionCheck.isLocked(PREFERENCES)
         binding.mainLayout.visibility = isLocked.not().toVisibility()
         binding.unlock.visibility = isLocked.toVisibility()
+        
+        // Update storage error state when UI becomes available
+        if (!isLocked) {
+            updateStorageErrorState()
+        }
+    }
+
+    private fun updateStorageErrorState() {
+        val hasGoogleDriveError = googleDriveManager.hasConnectionError()
+        binding.directoryErrorIcon.visibility = if (hasGoogleDriveError) View.VISIBLE else View.GONE
     }
 
     private fun queryProtection() {

@@ -13,10 +13,12 @@ import app.aaps.plugins.configuration.configBuilder.RunningConfigurationImpl
 import app.aaps.plugins.configuration.maintenance.FileListProviderImpl
 import app.aaps.plugins.configuration.maintenance.ImportExportPrefsImpl
 import app.aaps.plugins.configuration.maintenance.MaintenanceFragment
+import app.aaps.plugins.configuration.maintenance.activities.CloudPrefImportListActivity
 import app.aaps.plugins.configuration.maintenance.activities.CustomWatchfaceImportListActivity
 import app.aaps.plugins.configuration.maintenance.activities.LogSettingActivity
 import app.aaps.plugins.configuration.maintenance.activities.PrefImportListActivity
 import app.aaps.plugins.configuration.maintenance.formats.EncryptedPrefsFormat
+import app.aaps.plugins.configuration.maintenance.googledrive.ExportDestinationDialog
 import dagger.Binds
 import dagger.Module
 import dagger.android.ContributesAndroidInjector
@@ -37,9 +39,11 @@ abstract class ConfigurationModule {
     @ContributesAndroidInjector abstract fun contributesCsvExportWorker(): ImportExportPrefsImpl.CsvExportWorker
     @ContributesAndroidInjector abstract fun contributesApsResultExportWorker(): ImportExportPrefsImpl.ApsResultExportWorker
     @ContributesAndroidInjector abstract fun contributesPrefImportListActivity(): PrefImportListActivity
+    @ContributesAndroidInjector abstract fun contributesCloudPrefImportListActivity(): CloudPrefImportListActivity
     @ContributesAndroidInjector abstract fun contributesCustomWatchfaceImportListActivity(): CustomWatchfaceImportListActivity
     @ContributesAndroidInjector abstract fun encryptedPrefsFormatInjector(): EncryptedPrefsFormat
     @ContributesAndroidInjector abstract fun prefImportListProviderInjector(): FileListProvider
+    @ContributesAndroidInjector abstract fun exportDestinationDialogInjector(): ExportDestinationDialog
 
     @Module
     interface Bindings {

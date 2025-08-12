@@ -6,6 +6,8 @@ plugins {
     alias(libs.plugins.ksp)
     id("com.android.application")
     id("kotlin-android")
+    id("kotlin-parcelize")
+    id("kotlin-allopen")
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
     id("android-app-dependencies")
@@ -210,9 +212,13 @@ dependencies {
     /* Dagger2 - We are going to use dagger.android which includes
      * support for Activity and fragment injection so we need to include
      * the following dependencies */
+    implementation(libs.com.google.dagger.android)
+    implementation(libs.com.google.dagger.android.support)
+    
+    // Use KSP for dagger-android processors
     ksp(libs.com.google.dagger.android.processor)
     ksp(libs.com.google.dagger.compiler)
-
+    
     // MainApp
     api(libs.com.uber.rxdogtag2.rxdogtag)
     // Remote config

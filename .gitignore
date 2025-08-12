@@ -9,6 +9,7 @@
 /java_pid*
 *.apk
 build/
+bin/
 !.idea/dictionaries/project-dictionary.xml
 .idea/*
 !.idea/codeStyles/

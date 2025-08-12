@@ -107,6 +107,15 @@ open class DaggerAppCompatActivityWithResult : DaggerAppCompatActivity() {
         super.attachBaseContext(LocaleHelper.wrap(newBase))
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        // 處理雲端導入結果
+        if (requestCode == 1001 && resultCode == RESULT_OK) { // CLOUD_IMPORT_REQUEST_CODE
+            importExportPrefs.doImportSharedPreferences(this)
+        }
+    }
+
     // Used for SetupWizardActivity
     open fun updateButtons() {}
 }
