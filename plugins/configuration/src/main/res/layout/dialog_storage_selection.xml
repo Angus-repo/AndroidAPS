@@ -4,35 +4,34 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="24dp">
 
     <!-- 本地儲存選項 -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/local_storage_card"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"
+        android:layout_marginBottom="16dp"
         android:clickable="true"
         android:focusable="true"
         android:foreground="?android:attr/selectableItemBackground"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="4dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="2dp"
         app:cardUseCompatPadding="true"
-        app:strokeColor="@color/storage_card_normal_stroke"
-        app:strokeWidth="@dimen/storage_card_normal_stroke_width">
+        app:strokeWidth="2dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp">
+            android:padding="20dp">
 
             <ImageView
                 android:id="@+id/local_storage_icon"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_gravity="center_vertical"
-                android:layout_marginEnd="16dp"
+                android:layout_marginEnd="20dp"
                 android:contentDescription="@string/storage_local"
                 android:src="@drawable/ic_directory" />
 
@@ -47,8 +46,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/storage_local"
-                    android:textColor="@color/storage_text_normal"
-                    android:textSize="18sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -57,8 +55,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="@string/storage_local_description"
-                    android:textColor="@color/storage_description_text"
-                    android:textSize="14sp" />
+                    android:textSize="14sp"
+                    android:alpha="0.7" />
 
             </LinearLayout>
 
@@ -74,24 +72,23 @@
         android:clickable="true"
         android:focusable="true"
         android:foreground="?android:attr/selectableItemBackground"
-        app:cardCornerRadius="12dp"
-        app:cardElevation="4dp"
+        app:cardCornerRadius="8dp"
+        app:cardElevation="2dp"
         app:cardUseCompatPadding="true"
-        app:strokeColor="@color/storage_card_normal_stroke"
-        app:strokeWidth="@dimen/storage_card_normal_stroke_width">
+        app:strokeWidth="2dp">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:padding="16dp">
+            android:padding="20dp">
 
             <ImageView
                 android:id="@+id/google_drive_icon"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="40dp"
+                android:layout_height="40dp"
                 android:layout_gravity="center_vertical"
-                android:layout_marginEnd="16dp"
+                android:layout_marginEnd="20dp"
                 android:contentDescription="@string/storage_google_drive"
                 android:src="@drawable/ic_google_drive" />
 
@@ -106,8 +103,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="@string/storage_google_drive"
-                    android:textColor="@color/storage_text_normal"
-                    android:textSize="18sp"
+                    android:textSize="16sp"
                     android:textStyle="bold" />
 
                 <TextView
@@ -116,8 +112,8 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="4dp"
                     android:text="@string/storage_google_drive_description"
-                    android:textColor="@color/storage_description_text"
-                    android:textSize="14sp" />
+                    android:textSize="14sp"
+                    android:alpha="0.7" />
 
             </LinearLayout>
 

@@ -639,9 +639,20 @@ class ImportExportPrefsImpl @Inject constructor(
 
                     PrefImportSummaryDialog.showSummary(activity, importOk, importPossible, prefs, {
                         if (importPossible) {
-                            // 在匯入前保存重要的使用者設定
+                            // 在匯入前保存重要的長期使用者設定（不包含短期令牌和一次性驗證碼）
+                            val savedGoogleDriveRefreshToken = sp.getString("google_drive_refresh_token", "")
+                            val savedGoogleDriveTokenExpiry = sp.getLong("google_drive_token_expiry", 0L)
+                            val savedGoogleDriveStorageType = sp.getString("google_drive_storage_type", "")
                             val savedGoogleDriveFolderId = sp.getString("google_drive_folder_id", "")
                             val savedAapsDirectoryUri = sp.getString("AapsDirectoryUri", "")
+                            
+                            // 保存匯出目的地偏好設定
+                            val savedLogEmailEnabled = sp.getBoolean("export_log_email_enabled", true)
+                            val savedLogCloudEnabled = sp.getBoolean("export_log_cloud_enabled", false)
+                            val savedSettingsLocalEnabled = sp.getBoolean("export_settings_local_enabled", true)
+                            val savedSettingsCloudEnabled = sp.getBoolean("export_settings_cloud_enabled", false)
+                            val savedCsvLocalEnabled = sp.getBoolean("export_csv_local_enabled", true)
+                            val savedCsvCloudEnabled = sp.getBoolean("export_csv_cloud_enabled", false)
                             
                             activePlugin.beforeImport()
                             sp.clear()
@@ -653,13 +664,30 @@ class ImportExportPrefsImpl @Inject constructor(
                                 }
                             }
                             
-                            // 匯入完成後恢復使用者的設定
+                            // 匯入完成後恢復使用者的長期設定
+                            if (savedGoogleDriveRefreshToken.isNotEmpty()) {
+                                sp.putString("google_drive_refresh_token", savedGoogleDriveRefreshToken)
+                            }
+                            if (savedGoogleDriveTokenExpiry > 0L) {
+                                sp.putLong("google_drive_token_expiry", savedGoogleDriveTokenExpiry)
+                            }
+                            if (savedGoogleDriveStorageType.isNotEmpty()) {
+                                sp.putString("google_drive_storage_type", savedGoogleDriveStorageType)
+                            }
                             if (savedGoogleDriveFolderId.isNotEmpty()) {
                                 sp.putString("google_drive_folder_id", savedGoogleDriveFolderId)
                             }
                             if (savedAapsDirectoryUri.isNotEmpty()) {
                                 sp.putString("AapsDirectoryUri", savedAapsDirectoryUri)
                             }
+                            
+                            // 恢復匯出目的地偏好設定
+                            sp.putBoolean("export_log_email_enabled", savedLogEmailEnabled)
+                            sp.putBoolean("export_log_cloud_enabled", savedLogCloudEnabled)
+                            sp.putBoolean("export_settings_local_enabled", savedSettingsLocalEnabled)
+                            sp.putBoolean("export_settings_cloud_enabled", savedSettingsCloudEnabled)
+                            sp.putBoolean("export_csv_local_enabled", savedCsvLocalEnabled)
+                            sp.putBoolean("export_csv_cloud_enabled", savedCsvCloudEnabled)
                             
                             activePlugin.afterImport()
                             restartAppAfterImport(activity)
