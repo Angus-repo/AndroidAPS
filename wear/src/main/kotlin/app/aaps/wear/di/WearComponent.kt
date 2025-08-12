@@ -12,8 +12,7 @@ import javax.inject.Singleton
     modules = [
         AndroidInjectionModule::class,
         WearModule::class,
-        WearServicesModule::class,
-        WearActivitiesModule::class
+        WearServicesModule::class
     ]
 )
 interface WearComponent : AndroidInjector<WearApp> {

@@ -6,12 +6,13 @@ plugins {
     alias(libs.plugins.ksp)
     id("com.android.application")
     id("kotlin-android")
+    id("kotlin-parcelize")
+    id("kotlin-allopen")
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
     id("android-app-dependencies")
     id("test-app-dependencies")
     id("jacoco-app-dependencies")
-    id("kotlin-kapt")
 }
 
 repositories {
@@ -227,15 +228,17 @@ dependencies {
     androidTestImplementation(libs.org.skyscreamer.jsonassert)
 
 
-    // 移除 KSP（由 KAPT 取代）
+    kspAndroidTest(libs.com.google.dagger.android.processor)
 
-    // Dagger Android runtime for AndroidInjection
+    /* Dagger2 - We are going to use dagger.android which includes
+     * support for Activity and fragment injection so we need to include
+     * the following dependencies */
     implementation(libs.com.google.dagger.android)
     implementation(libs.com.google.dagger.android.support)
-
-    // Use KAPT for dagger-android processors
-    kapt(libs.com.google.dagger.android.processor)
-    kapt(libs.com.google.dagger.compiler)
+    
+    // Use KSP for dagger-android processors
+    ksp(libs.com.google.dagger.android.processor)
+    ksp(libs.com.google.dagger.compiler)
     
     // MainApp
     api(libs.com.uber.rxdogtag2.rxdogtag)
