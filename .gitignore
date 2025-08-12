@@ -10,6 +10,7 @@
 *.apk
 build/
 bin/
+.vscode/
 !.idea/dictionaries/project-dictionary.xml
 .idea/*
 !.idea/codeStyles/
