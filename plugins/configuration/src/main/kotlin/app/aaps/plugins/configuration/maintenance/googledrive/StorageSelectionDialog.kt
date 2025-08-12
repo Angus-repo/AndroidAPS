@@ -5,7 +5,6 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.ImageView
 import android.widget.TextView
-import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import app.aaps.plugins.configuration.activities.DaggerAppCompatActivityWithResult
@@ -21,6 +20,8 @@ import app.aaps.core.interfaces.plugin.ActivePlugin
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import app.aaps.core.ui.dialogs.AlertDialogHelper
 
 @Singleton
 class StorageSelectionDialog @Inject constructor(
@@ -62,8 +63,12 @@ class StorageSelectionDialog @Inject constructor(
         localDescription.text = rh.gs(R.string.storage_local_description)
         googleDriveDescription.text = rh.gs(R.string.storage_google_drive_description)
         
-        val dialog = AlertDialog.Builder(activity)
-            .setTitle(rh.gs(R.string.select_storage_type))
+        // Use MaterialAlertDialogBuilder with DialogTheme to match project style
+        val dialog = MaterialAlertDialogBuilder(activity, app.aaps.core.ui.R.style.DialogTheme)
+            .setCustomTitle(AlertDialogHelper.buildCustomTitle(
+                activity, 
+                rh.gs(R.string.select_storage_type)
+            ))
             .setView(dialogView)
             .setNegativeButton(rh.gs(app.aaps.core.ui.R.string.cancel), null)
             .create()
@@ -72,8 +77,11 @@ class StorageSelectionDialog @Inject constructor(
             // When switching from non-local to local, ask Yes/No and keep this dialog open
             val wasGoogleDrive = googleDriveManager.getStorageType() == GoogleDriveManager.STORAGE_TYPE_GOOGLE_DRIVE
             if (wasGoogleDrive) {
-                AlertDialog.Builder(activity)
-                    .setTitle("切換到不使用雲端")
+                MaterialAlertDialogBuilder(activity, app.aaps.core.ui.R.style.DialogTheme)
+                    .setCustomTitle(AlertDialogHelper.buildCustomTitle(
+                        activity, 
+                        "切換到不使用雲端"
+                    ))
                     .setMessage("切換到不使用雲端儲存。是否清除雲端授權？")
                     .setPositiveButton(rh.gs(app.aaps.core.ui.R.string.yes)) { _, _ ->
                         // Yes: clear cloud tokens and switch to local, keep dialog open
@@ -121,17 +129,19 @@ class StorageSelectionDialog @Inject constructor(
     private fun updateCardSelection(card: com.google.android.material.card.MaterialCardView, icon: ImageView, text: TextView, isSelected: Boolean) {
         val context = card.context
         if (isSelected) {
-            card.setCardBackgroundColor(ContextCompat.getColor(context, R.color.storage_card_selected))
-            card.strokeColor = ContextCompat.getColor(context, R.color.storage_card_selected_stroke)
-            card.strokeWidth = context.resources.getDimensionPixelSize(R.dimen.storage_card_selected_stroke_width)
-            icon.setColorFilter(ContextCompat.getColor(context, R.color.storage_icon_selected))
-            text.setTextColor(ContextCompat.getColor(context, R.color.storage_text_selected))
+            // Use project standard selected colors
+            card.setCardBackgroundColor(ContextCompat.getColor(context, app.aaps.core.ui.R.color.colorAccent))
+            card.strokeColor = ContextCompat.getColor(context, app.aaps.core.ui.R.color.colorPrimary)
+            card.strokeWidth = 4
+            icon.setColorFilter(ContextCompat.getColor(context, app.aaps.core.ui.R.color.white))
+            text.setTextColor(ContextCompat.getColor(context, app.aaps.core.ui.R.color.white))
         } else {
-            card.setCardBackgroundColor(ContextCompat.getColor(context, R.color.storage_card_normal))
-            card.strokeColor = ContextCompat.getColor(context, R.color.storage_card_normal_stroke)
-            card.strokeWidth = context.resources.getDimensionPixelSize(R.dimen.storage_card_normal_stroke_width)
-            icon.setColorFilter(ContextCompat.getColor(context, R.color.storage_icon_normal))
-            text.setTextColor(ContextCompat.getColor(context, R.color.storage_text_normal))
+            // Use project standard unselected colors
+            card.setCardBackgroundColor(ContextCompat.getColor(context, app.aaps.core.ui.R.color.cardColorBackground))
+            card.strokeColor = ContextCompat.getColor(context, app.aaps.core.ui.R.color.gray)
+            card.strokeWidth = 2
+            icon.setColorFilter(ContextCompat.getColor(context, app.aaps.core.ui.R.color.defaultTextColor))
+            text.setTextColor(ContextCompat.getColor(context, app.aaps.core.ui.R.color.defaultTextColor))
         }
     }
     
@@ -252,8 +262,11 @@ class StorageSelectionDialog @Inject constructor(
         activity: DaggerAppCompatActivityWithResult,
         onResult: (cancelled: Boolean) -> Unit
     ) {
-        val dialog = AlertDialog.Builder(activity)
-            .setTitle(rh.gs(R.string.google_drive_authorization))
+        val dialog = MaterialAlertDialogBuilder(activity, app.aaps.core.ui.R.style.DialogTheme)
+            .setCustomTitle(AlertDialogHelper.buildCustomTitle(
+                activity, 
+                rh.gs(R.string.google_drive_authorization)
+            ))
             .setMessage("Google Drive authorization page has been opened in your browser.\n\nPlease complete the authorization, then return to this app.\n\nThis dialog will close automatically once authorization is completed.")
             .setNegativeButton(rh.gs(app.aaps.core.ui.R.string.cancel)) { _, _ ->
                 onResult(true)
@@ -274,8 +287,11 @@ class StorageSelectionDialog @Inject constructor(
         onSuccess: () -> Unit,
         onStorageChanged: () -> Unit
     ) {
-        AlertDialog.Builder(activity)
-            .setTitle(rh.gs(R.string.google_drive_connection_failed))
+        MaterialAlertDialogBuilder(activity, app.aaps.core.ui.R.style.DialogTheme)
+            .setCustomTitle(AlertDialogHelper.buildCustomTitle(
+                activity, 
+                rh.gs(R.string.google_drive_connection_failed)
+            ))
             .setMessage(rh.gs(R.string.google_drive_reauthorize_message))
             .setPositiveButton(rh.gs(R.string.reauthorize)) { _, _ ->
                 googleDriveManager.clearGoogleDriveSettings()
@@ -306,8 +322,11 @@ class StorageSelectionDialog @Inject constructor(
                 folderNames.add(rh.gs(R.string.create_new_folder))
                 folderIds.add("create_new")
                 
-                AlertDialog.Builder(activity)
-                    .setTitle(rh.gs(R.string.select_google_drive_folder))
+                MaterialAlertDialogBuilder(activity, app.aaps.core.ui.R.style.DialogTheme)
+                    .setCustomTitle(AlertDialogHelper.buildCustomTitle(
+                        activity, 
+                        rh.gs(R.string.select_google_drive_folder)
+                    ))
                     .setItems(folderNames.toTypedArray()) { _, which ->
                         when {
                             which == folderNames.size - 1 -> {
@@ -341,8 +360,11 @@ class StorageSelectionDialog @Inject constructor(
         editText.hint = rh.gs(R.string.folder_name)
         editText.setText("AAPS/settings")
         
-        AlertDialog.Builder(activity)
-            .setTitle(rh.gs(R.string.create_folder))
+        MaterialAlertDialogBuilder(activity, app.aaps.core.ui.R.style.DialogTheme)
+            .setCustomTitle(AlertDialogHelper.buildCustomTitle(
+                activity, 
+                rh.gs(R.string.create_folder)
+            ))
             .setView(editText)
             .setPositiveButton(rh.gs(R.string.create)) { _, _ ->
                 val folderName = editText.text.toString().trim()
