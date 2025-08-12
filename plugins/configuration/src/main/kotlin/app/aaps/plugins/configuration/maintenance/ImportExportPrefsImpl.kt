@@ -533,13 +533,16 @@ class ImportExportPrefsImpl @Inject constructor(
                     return@launch
                 }
 
+                // 只取最新的前10筆檔案進行處理（API已經按修改時間排序）
+                val recentFiles = files.take(10)
+
                 // 下載所有文件並解析元數據，就像本地文件一樣
                 val prefsFiles = mutableListOf<PrefsFile>()
                 var processedFiles = 0
-                for (file in files) {
+                for (file in recentFiles) {
                     try {
                         // 更新進度
-                        progressDialog.setMessage("正在載入 ${file.name} (${processedFiles + 1}/${files.size})...")
+                        progressDialog.setMessage("正在載入 ${file.name} (${processedFiles + 1}/${recentFiles.size})...")
                         
                         val bytes = googleDriveManager.downloadFile(file.id)
                         if (bytes != null) {
@@ -636,6 +639,10 @@ class ImportExportPrefsImpl @Inject constructor(
 
                     PrefImportSummaryDialog.showSummary(activity, importOk, importPossible, prefs, {
                         if (importPossible) {
+                            // 在匯入前保存重要的使用者設定
+                            val savedGoogleDriveFolderId = sp.getString("google_drive_folder_id", "")
+                            val savedAapsDirectoryUri = sp.getString("AapsDirectoryUri", "")
+                            
                             activePlugin.beforeImport()
                             sp.clear()
                             for ((key, value) in prefs.values) {
@@ -645,6 +652,15 @@ class ImportExportPrefsImpl @Inject constructor(
                                     sp.putString(key, value)
                                 }
                             }
+                            
+                            // 匯入完成後恢復使用者的設定
+                            if (savedGoogleDriveFolderId.isNotEmpty()) {
+                                sp.putString("google_drive_folder_id", savedGoogleDriveFolderId)
+                            }
+                            if (savedAapsDirectoryUri.isNotEmpty()) {
+                                sp.putString("AapsDirectoryUri", savedAapsDirectoryUri)
+                            }
+                            
                             activePlugin.afterImport()
                             restartAppAfterImport(activity)
                         } else {
