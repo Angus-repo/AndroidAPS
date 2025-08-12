@@ -1,6 +1,5 @@
 package app.aaps.wear
 
-import android.app.Application
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener
@@ -13,7 +12,6 @@ import app.aaps.wear.comm.DataHandlerWear
 import app.aaps.wear.comm.DataLayerListenerServiceWear
 import app.aaps.wear.comm.ExceptionHandlerWear
 import app.aaps.wear.di.DaggerWearComponent
-import app.aaps.wear.di.WearComponent
 import app.aaps.wear.events.EventWearPreferenceChange
 import dagger.android.AndroidInjector
 import dagger.android.DaggerApplication
@@ -28,13 +26,8 @@ class WearApp : DaggerApplication(), OnSharedPreferenceChangeListener {
     @Inject lateinit var dataHandlerWear: DataHandlerWear // instantiate only
     @Inject lateinit var exceptionHandlerWear: ExceptionHandlerWear
 
-    lateinit var injector: WearComponent
-
     override fun onCreate() {
         super.onCreate()
-        injector = DaggerWearComponent.builder().application(this).build()
-        injector.inject(this)
-
         exceptionHandlerWear.register()
         aapsLogger.debug(LTag.WEAR, "onCreate")
         PreferenceManager.getDefaultSharedPreferences(this).registerOnSharedPreferenceChangeListener(this)
