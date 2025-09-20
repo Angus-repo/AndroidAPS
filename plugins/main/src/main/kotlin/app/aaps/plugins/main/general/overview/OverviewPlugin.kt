@@ -318,15 +318,33 @@ class OverviewPlugin @Inject constructor(
                 key = "overview_advanced_settings"
                 title = rh.gs(app.aaps.core.ui.R.string.advanced_settings_title)
                 addPreference(AdaptiveSwitchPreference(ctx = context, booleanKey = BooleanKey.OverviewUseSuperBolus, summary = R.string.enablesuperbolus_summary, title = R.string.enablesuperbolus))
-                addPreference(AdaptiveSwitchPreference(ctx = context, booleanKey = BooleanKey.OverviewUseCustomTrendCalculator, summary = R.string.overview_use_custom_trend_summary, title = R.string.overview_use_custom_trend_title))
-                addPreference(
-                    AdaptiveIntPreference(
-                        ctx = context,
-                        intKey = IntKey.TrendCustomLookbackMinutes,
-                        dialogMessage = R.string.overview_custom_trend_minutes_message,
-                        title = R.string.overview_custom_trend_minutes_title
-                    ).apply { dependency = BooleanKey.OverviewUseCustomTrendCalculator.key }
+
+                val customTrendToggle = AdaptiveSwitchPreference(
+                    ctx = context,
+                    booleanKey = BooleanKey.OverviewUseCustomTrendCalculator,
+                    summary = R.string.overview_use_custom_trend_summary,
+                    title = R.string.overview_use_custom_trend_title
                 )
+                val customTrendMinutes = AdaptiveIntPreference(
+                    ctx = context,
+                    intKey = IntKey.TrendCustomLookbackMinutes,
+                    dialogMessage = R.string.overview_custom_trend_minutes_message,
+                    title = R.string.overview_custom_trend_minutes_title
+                ).apply {
+                    val enabled = preferences.get(BooleanKey.OverviewUseCustomTrendCalculator)
+                    isVisible = enabled
+                    isEnabled = enabled
+                }
+
+                customTrendToggle.setOnPreferenceChangeListener { _, newValue ->
+                    val enabled = newValue as? Boolean ?: return@setOnPreferenceChangeListener true
+                    customTrendMinutes.isVisible = enabled
+                    customTrendMinutes.isEnabled = enabled
+                    true
+                }
+
+                addPreference(customTrendToggle)
+                addPreference(customTrendMinutes)
             })
         }
     }
