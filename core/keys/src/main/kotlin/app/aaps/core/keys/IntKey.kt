@@ -22,6 +22,7 @@ enum class IntKey(
     OverviewEatingSoonDuration("eatingsoon_duration", 45, 15, 120, defaultedBySM = true, hideParentScreenIfHidden = true),
     OverviewActivityDuration("activity_duration", 90, 15, 600, defaultedBySM = true),
     OverviewHypoDuration("hypo_duration", 60, 15, 180, defaultedBySM = true),
+    TrendCustomLookbackMinutes("trend_arrow_lookback_minutes", 5, 1, 30),
     OverviewCageWarning("statuslights_cage_warning", 48, 24, 240, defaultedBySM = true, dependency = BooleanKey.OverviewShowStatusLights),
     OverviewCageCritical("statuslights_cage_critical", 72, 24, 240, defaultedBySM = true, dependency = BooleanKey.OverviewShowStatusLights),
     OverviewIageWarning("statuslights_iage_warning", 72, 24, 240, defaultedBySM = true, dependency = BooleanKey.OverviewShowStatusLights),

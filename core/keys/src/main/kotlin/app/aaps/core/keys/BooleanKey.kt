@@ -29,6 +29,7 @@ enum class BooleanKey(
     OverviewUseBolusAdvisor("use_bolus_advisor", true, defaultedBySM = true),
     OverviewUseBolusReminder("use_bolus_reminder", true, defaultedBySM = true),
     OverviewUseSuperBolus("key_usersuperbolus", false, defaultedBySM = true, hideParentScreenIfHidden = true),
+    OverviewUseCustomTrendCalculator("overview_use_custom_trend_calculator", false),
 
     PumpBtWatchdog("bt_watchdog", false, showInNsClientMode = false, hideParentScreenIfHidden = true),
 

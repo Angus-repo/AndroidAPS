@@ -33,6 +33,7 @@ import app.aaps.core.interfaces.utils.DecimalFormatter
 import app.aaps.core.interfaces.utils.HardLimits
 import app.aaps.core.interfaces.utils.Translator
 import app.aaps.core.interfaces.utils.TrendCalculator
+import app.aaps.core.keys.BooleanKey
 import app.aaps.core.interfaces.utils.fabric.FabricPrivacy
 import app.aaps.core.keys.Preferences
 import app.aaps.implementation.alerts.LocalAlertUtilsImpl
@@ -71,16 +72,19 @@ import app.aaps.implementation.userEntry.UserEntryPresentationHelperImpl
 import app.aaps.implementation.utils.DecimalFormatterImpl
 import app.aaps.implementation.utils.HardLimitsImpl
 import app.aaps.implementation.utils.TranslatorImpl
+import app.aaps.implementation.utils.TrendCalculatorCustomImpl
 import app.aaps.implementation.utils.TrendCalculatorImpl
 import app.aaps.implementation.utils.fabric.FabricPrivacyImpl
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.android.ContributesAndroidInjector
 
 @Module(
     includes = [
         ImplementationModule.Bindings::class,
-        CommandQueueModule::class
+        CommandQueueModule::class,
+        TrendCalculatorModule::class
     ]
 )
 
@@ -114,7 +118,6 @@ class ImplementationModule {
         @Binds fun bindResourceHelper(resourceHelperImpl: ResourceHelperImpl): ResourceHelper
         @Binds fun bindBlePreCheck(blePreCheckImpl: BlePreCheckImpl): BlePreCheck
 
-        @Binds fun bindTrendCalculatorInterface(trendCalculator: TrendCalculatorImpl): TrendCalculator
         @Binds fun bindTddCalculatorInterface(tddCalculator: TddCalculatorImpl): TddCalculator
         @Binds fun bindTirCalculatorInterface(tirCalculator: TirCalculatorImpl): TirCalculator
         @Binds fun bindDexcomTirCalculatorInterface(dexcomTirCalculator: DexcomTirCalculatorImpl): DexcomTirCalculator
@@ -131,4 +134,16 @@ class ImplementationModule {
         @Binds fun bindsGlucoseStatusProvider(glucoseStatusProviderImpl: GlucoseStatusProviderImpl): GlucoseStatusProvider
         @Binds fun bindsDecimalFormatter(decimalFormatterImpl: DecimalFormatterImpl): DecimalFormatter
     }
+}
+
+@Module
+object TrendCalculatorModule {
+
+    @Provides
+    fun provideTrendCalculator(
+        preferences: Preferences,
+        defaultImpl: TrendCalculatorImpl,
+        customImpl: TrendCalculatorCustomImpl
+    ): TrendCalculator =
+        if (preferences.get(BooleanKey.OverviewUseCustomTrendCalculator)) customImpl else defaultImpl
 }

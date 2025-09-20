@@ -7,13 +7,16 @@ import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.resources.ResourceHelper
 import app.aaps.core.interfaces.utils.TrendCalculator
+import app.aaps.core.keys.IntKey
+import app.aaps.core.keys.Preferences
 import dagger.Reusable
 import javax.inject.Inject
 
 @Reusable
 class TrendCalculatorCustomImpl @Inject constructor(
     private val rh: ResourceHelper,
-    private val aapsLogger: AAPSLogger
+    private val aapsLogger: AAPSLogger,
+    private val preferences: Preferences
 ) : TrendCalculator {
 
     override fun getTrendArrow(autosensDataStore: AutosensDataStore): TrendArrow? {
@@ -43,8 +46,7 @@ class TrendCalculatorCustomImpl @Inject constructor(
 
     private fun calculateDirection(readings: MutableList<InMemoryGlucoseValue>): TrendArrow {
 
-        // 定義回溯時間，單位為分鐘
-        val lookbackMinutes = 5
+        val lookbackMinutes = preferences.get(IntKey.TrendCustomLookbackMinutes).coerceAtLeast(1)
 
         // 如果數據不足，直接返回 NONE
         if (readings.size < 2) return TrendArrow.NONE
