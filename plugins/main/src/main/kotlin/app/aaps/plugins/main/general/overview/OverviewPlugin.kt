@@ -150,6 +150,7 @@ class OverviewPlugin @Inject constructor(
             .put(UnitDoubleKey.OverviewActivityTarget, preferences)
             .put(IntKey.OverviewHypoDuration, preferences)
             .put(BooleanKey.OverviewUseCustomTrendCalculator, preferences)
+            .put(BooleanKey.OverviewShowSourceTrendArrow, preferences)
             .put(IntKey.TrendCustomLookbackMinutes, preferences)
             .put(UnitDoubleKey.OverviewHypoTarget, preferences)
             .put(UnitDoubleKey.OverviewLowMark, preferences)
@@ -182,6 +183,7 @@ class OverviewPlugin @Inject constructor(
             .store(UnitDoubleKey.OverviewActivityTarget, preferences)
             .store(IntKey.OverviewHypoDuration, preferences)
             .store(BooleanKey.OverviewUseCustomTrendCalculator, preferences)
+            .store(BooleanKey.OverviewShowSourceTrendArrow, preferences)
             .store(IntKey.TrendCustomLookbackMinutes, preferences)
             .store(UnitDoubleKey.OverviewHypoTarget, preferences)
             .store(UnitDoubleKey.OverviewLowMark, preferences)
@@ -319,6 +321,7 @@ class OverviewPlugin @Inject constructor(
                 title = rh.gs(app.aaps.core.ui.R.string.advanced_settings_title)
                 addPreference(AdaptiveSwitchPreference(ctx = context, booleanKey = BooleanKey.OverviewUseSuperBolus, summary = R.string.enablesuperbolus_summary, title = R.string.enablesuperbolus))
 
+                val customEnabledInitially = preferences.get(BooleanKey.OverviewUseCustomTrendCalculator)
                 val customTrendToggle = AdaptiveSwitchPreference(
                     ctx = context,
                     booleanKey = BooleanKey.OverviewUseCustomTrendCalculator,
@@ -331,20 +334,31 @@ class OverviewPlugin @Inject constructor(
                     dialogMessage = R.string.overview_custom_trend_minutes_message,
                     title = R.string.overview_custom_trend_minutes_title
                 ).apply {
-                    val enabled = preferences.get(BooleanKey.OverviewUseCustomTrendCalculator)
-                    isVisible = enabled
-                    isEnabled = enabled
+                    isVisible = customEnabledInitially
+                    isEnabled = customEnabledInitially
+                }
+                val showSourceTrend = AdaptiveSwitchPreference(
+                    ctx = context,
+                    booleanKey = BooleanKey.OverviewShowSourceTrendArrow,
+                    summary = R.string.overview_show_source_trend_summary,
+                    title = R.string.overview_show_source_trend_title
+                ).apply {
+                    isVisible = customEnabledInitially
+                    isEnabled = customEnabledInitially
                 }
 
                 customTrendToggle.setOnPreferenceChangeListener { _, newValue ->
                     val enabled = newValue as? Boolean ?: return@setOnPreferenceChangeListener true
                     customTrendMinutes.isVisible = enabled
                     customTrendMinutes.isEnabled = enabled
+                    showSourceTrend.isVisible = enabled
+                    showSourceTrend.isEnabled = enabled
                     true
                 }
 
                 addPreference(customTrendToggle)
                 addPreference(customTrendMinutes)
+                addPreference(showSourceTrend)
             })
         }
     }

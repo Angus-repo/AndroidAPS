@@ -57,6 +57,16 @@
                 app:srcCompat="@drawable/ic_flat"
                 android:contentDescription="@string/direction" />
 
+            <ImageView
+                android:id="@+id/custom_direction"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_gravity="center_vertical"
+                android:layout_marginStart="4dp"
+                android:visibility="gone"
+                app:srcCompat="@drawable/ic_flat"
+                android:contentDescription="@string/trend_arrow" />
+
             <TextView
                 android:id="@+id/ns"
                 android:layout_width="wrap_content"

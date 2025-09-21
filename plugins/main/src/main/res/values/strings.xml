@@ -277,7 +277,9 @@
     <string name="overview_use_custom_trend_title">Use custom trend calculator</string>
     <string name="overview_use_custom_trend_summary">Switch between the default and custom trend arrow calculation.</string>
     <string name="overview_custom_trend_minutes_title">Custom trend lookback (minutes)</string>
-    <string name="overview_custom_trend_minutes_message">Enter the number of minutes (1-30) used for the custom trend arrow.</string>
+    <string name="overview_custom_trend_minutes_message">Enter the number of minutes (5-15) used for the custom trend arrow.</string>
+    <string name="overview_show_source_trend_title">Show BG source trend arrow</string>
+    <string name="overview_show_source_trend_summary">Keep displaying the trend arrow provided by the BG source next to the custom arrow.</string>
     <string name="run_question">Run %s?</string>
 
     <!--    OverviewMenu-->

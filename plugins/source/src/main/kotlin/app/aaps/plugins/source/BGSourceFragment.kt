@@ -15,6 +15,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import app.aaps.core.data.model.GV
+import app.aaps.core.data.model.TrendArrow
 import app.aaps.core.data.time.T
 import app.aaps.core.data.ue.Action
 import app.aaps.core.data.ue.Sources
@@ -28,6 +29,9 @@ import app.aaps.core.interfaces.rx.bus.RxBus
 import app.aaps.core.interfaces.rx.events.EventNewBG
 import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.interfaces.utils.fabric.FabricPrivacy
+import app.aaps.core.keys.BooleanKey
+import app.aaps.core.keys.IntKey
+import app.aaps.core.keys.Preferences
 import app.aaps.core.objects.extensions.directionToIcon
 import app.aaps.core.objects.ui.ActionModeHelper
 import app.aaps.core.ui.dialogs.OKDialog
@@ -51,6 +55,7 @@ class BGSourceFragment : DaggerFragment(), MenuProvider {
     @Inject lateinit var persistenceLayer: PersistenceLayer
     @Inject lateinit var aapsSchedulers: AapsSchedulers
     @Inject lateinit var profileUtil: ProfileUtil
+    @Inject lateinit var preferences: Preferences
 
     private val disposable = CompositeDisposable()
     private val millsToThePast = T.hours(36).msecs()
@@ -136,7 +141,20 @@ class BGSourceFragment : DaggerFragment(), MenuProvider {
             holder.binding.date.text = if (newDay) dateUtil.dateStringRelative(glucoseValue.timestamp, rh) else ""
             holder.binding.time.text = dateUtil.timeStringWithSeconds(glucoseValue.timestamp)
             holder.binding.value.text = profileUtil.fromMgdlToStringInUnits(glucoseValue.value)
+            val customEnabled = preferences.get(BooleanKey.OverviewUseCustomTrendCalculator)
+            val showCustom = customEnabled && preferences.get(BooleanKey.OverviewShowSourceTrendArrow)
+
+            holder.binding.direction.visibility = View.VISIBLE
             holder.binding.direction.setImageResource(glucoseValue.trendArrow.directionToIcon())
+
+            val customArrow = if (showCustom) calculateCustomArrow(glucoseValues, position) else null
+            if (showCustom && customArrow != null && customArrow != TrendArrow.NONE) {
+                holder.binding.customDirection.visibility = View.VISIBLE
+                holder.binding.customDirection.setImageResource(customArrow.directionToIcon())
+                holder.binding.customDirection.setColorFilter(rh.gc(app.aaps.core.ui.R.color.widget_inrange))
+            } else {
+                holder.binding.customDirection.visibility = View.GONE
+            }
             if (position > 0) {
                 val previous = glucoseValues[position - 1]
                 val diff = previous.timestamp - glucoseValue.timestamp
@@ -170,6 +188,28 @@ class BGSourceFragment : DaggerFragment(), MenuProvider {
         inner class GlucoseValuesViewHolder(view: View) : RecyclerView.ViewHolder(view) {
 
             val binding = SourceItemBinding.bind(view)
+        }
+    }
+
+    private fun calculateCustomArrow(glucoseValues: List<GV>, position: Int): TrendArrow? {
+        val lookbackMinutes = preferences.get(IntKey.TrendCustomLookbackMinutes).coerceIn(5, 15)
+        val current = glucoseValues[position]
+        val lookbackStartTime = current.timestamp - lookbackMinutes * 60 * 1000
+        val window = glucoseValues.filter { it.timestamp >= lookbackStartTime }
+        if (window.size < 2) return TrendArrow.NONE
+        val previousAverage = window.map { it.value }.average()
+        val denominator = current.timestamp - lookbackStartTime
+        val slope = if (denominator == 0L) 0.0 else (current.value - previousAverage) / denominator
+        val slopeByMinute = slope * 60000
+        return when {
+            slopeByMinute <= -3.5 -> TrendArrow.DOUBLE_DOWN
+            slopeByMinute <= -2   -> TrendArrow.SINGLE_DOWN
+            slopeByMinute <= -1   -> TrendArrow.FORTY_FIVE_DOWN
+            slopeByMinute <= 1    -> TrendArrow.FLAT
+            slopeByMinute <= 2    -> TrendArrow.FORTY_FIVE_UP
+            slopeByMinute <= 3.5  -> TrendArrow.SINGLE_UP
+            slopeByMinute <= 40   -> TrendArrow.DOUBLE_UP
+            else                  -> TrendArrow.NONE
         }
     }
 

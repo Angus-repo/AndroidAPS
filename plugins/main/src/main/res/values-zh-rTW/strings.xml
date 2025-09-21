@@ -265,7 +265,9 @@
     <string name="overview_use_custom_trend_title">啟用自訂趨勢計算</string>
     <string name="overview_use_custom_trend_summary">在預設與自訂的趨勢箭頭演算法之間切換。</string>
     <string name="overview_custom_trend_minutes_title">自訂趨勢回溯時間（分鐘）</string>
-    <string name="overview_custom_trend_minutes_message">輸入用於自訂趨勢箭頭的分鐘數（1-30）。</string>
+    <string name="overview_custom_trend_minutes_message">輸入用於自訂趨勢箭頭的分鐘數（5-15）。</string>
+    <string name="overview_show_source_trend_title">顯示血糖來源的趨勢箭頭</string>
+    <string name="overview_show_source_trend_summary">在自訂趨勢箭頭旁保留血糖來源提供的趨勢箭頭。</string>
     <string name="run_question">運行 %s？</string>
     <!--    OverviewMenu-->
     <string name="overview_show_predictions">預測</string>
