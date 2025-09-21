@@ -195,7 +195,7 @@ class BGSourceFragment : DaggerFragment(), MenuProvider {
     private fun calculateCustomArrow(glucoseValues: List<GV>, position: Int): TrendArrow {
         val lookbackMinutes = preferences.get(IntKey.TrendCustomLookbackMinutes).coerceIn(5, 15)
         val currentReading = glucoseValues[position]
-        val lookbackStartTime = currentReading.timestamp - lookbackMinutes * 60 * 1000
+        val lookbackStartTime = currentReading.timestamp - lookbackMinutes * 60 * 1000 + 1000 // add 1 second to include the current point
         val readings = mutableListOf<InMemoryGlucoseValue>()
         for (i in position until glucoseValues.size) {
             val gv = glucoseValues[i]
