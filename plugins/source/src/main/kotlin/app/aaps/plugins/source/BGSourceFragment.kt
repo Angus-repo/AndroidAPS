@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import app.aaps.core.data.model.GV
 import app.aaps.core.data.model.TrendArrow
+import app.aaps.core.data.iob.InMemoryGlucoseValue
 import app.aaps.core.data.time.T
 import app.aaps.core.data.ue.Action
 import app.aaps.core.data.ue.Sources
@@ -147,8 +148,8 @@ class BGSourceFragment : DaggerFragment(), MenuProvider {
             holder.binding.direction.visibility = View.VISIBLE
             holder.binding.direction.setImageResource(glucoseValue.trendArrow.directionToIcon())
 
-            val customArrow = if (showCustom) calculateCustomArrow(glucoseValues, position) else null
-            if (showCustom && customArrow != null && customArrow != TrendArrow.NONE) {
+            val customArrow = if (showCustom) calculateCustomArrow(glucoseValues, position) else TrendArrow.NONE
+            if (showCustom && customArrow != TrendArrow.NONE) {
                 holder.binding.customDirection.visibility = View.VISIBLE
                 holder.binding.customDirection.setImageResource(customArrow.directionToIcon())
                 holder.binding.customDirection.setColorFilter(rh.gc(app.aaps.core.ui.R.color.widget_inrange))
@@ -191,16 +192,27 @@ class BGSourceFragment : DaggerFragment(), MenuProvider {
         }
     }
 
-    private fun calculateCustomArrow(glucoseValues: List<GV>, position: Int): TrendArrow? {
+    private fun calculateCustomArrow(glucoseValues: List<GV>, position: Int): TrendArrow {
         val lookbackMinutes = preferences.get(IntKey.TrendCustomLookbackMinutes).coerceIn(5, 15)
-        val current = glucoseValues[position]
-        val lookbackStartTime = current.timestamp - lookbackMinutes * 60 * 1000
-        val window = glucoseValues.filter { it.timestamp >= lookbackStartTime }
-        if (window.size < 2) return TrendArrow.NONE
-        val previousAverage = window.map { it.value }.average()
-        val denominator = current.timestamp - lookbackStartTime
-        val slope = if (denominator == 0L) 0.0 else (current.value - previousAverage) / denominator
+        val currentReading = glucoseValues[position]
+        val lookbackStartTime = currentReading.timestamp - lookbackMinutes * 60 * 1000
+        val readings = mutableListOf<InMemoryGlucoseValue>()
+        for (i in position until glucoseValues.size) {
+            val gv = glucoseValues[i]
+            if (gv.timestamp < lookbackStartTime) break
+            readings.add(gv.toInMemoryGlucoseValue())
+        }
+        if (readings.size < 2) return TrendArrow.NONE
+
+        val current = readings[0]
+        val recentReadings = readings.filter { it.timestamp >= lookbackStartTime }
+        if (recentReadings.size < 2) return TrendArrow.NONE
+
+        val previousAverage = recentReadings.drop(1).map { it.recalculated }.average()
+        val slope = if (current.timestamp == lookbackStartTime) 0.0
+        else (current.recalculated - previousAverage) / (current.timestamp - lookbackStartTime)
         val slopeByMinute = slope * 60000
+
         return when {
             slopeByMinute <= -3.5 -> TrendArrow.DOUBLE_DOWN
             slopeByMinute <= -2   -> TrendArrow.SINGLE_DOWN
@@ -212,6 +224,16 @@ class BGSourceFragment : DaggerFragment(), MenuProvider {
             else                  -> TrendArrow.NONE
         }
     }
+
+    private fun GV.toInMemoryGlucoseValue(): InMemoryGlucoseValue =
+        InMemoryGlucoseValue(
+            timestamp = timestamp,
+            value = value,
+            trendArrow = TrendArrow.NONE,
+            smoothed = value,
+            filledGap = false,
+            sourceSensor = sourceSensor
+        )
 
     private fun getConfirmationText(selectedItems: SparseArray<GV>): String {
         if (selectedItems.size() == 1) {

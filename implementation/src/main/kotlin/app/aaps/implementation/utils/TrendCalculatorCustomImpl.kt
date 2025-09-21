@@ -22,7 +22,12 @@ class TrendCalculatorCustomImpl @Inject constructor(
     override fun getTrendArrow(autosensDataStore: AutosensDataStore): TrendArrow? {
         val data = autosensDataStore.getBucketedDataTableCopy() ?: return null
         if (data.isEmpty()) return null
-        return calculateDirection(data)
+        val glucoseValue = data[0]
+        return when {
+            glucoseValue.value != glucoseValue.recalculated -> calculateDirection(data) // always recalc
+            glucoseValue.trendArrow != TrendArrow.NONE      -> glucoseValue.trendArrow
+            else                                            -> calculateDirection(data)
+        }
     }
 
     override fun getTrendDescription(autosensDataStore: AutosensDataStore): String {
@@ -43,33 +48,23 @@ class TrendCalculatorCustomImpl @Inject constructor(
 
         val lookbackMinutes = preferences.get(IntKey.TrendCustomLookbackMinutes).coerceAtLeast(1)
 
-        // 如果數據不足，直接返回 NONE
         if (readings.size < 2) return TrendArrow.NONE
 
-        // 獲取當前的時間戳和當前值
         val current = readings[0]
-
-        // 計算回溯起始時間
         val lookbackStartTime = current.timestamp - lookbackMinutes * 60 * 1000
 
-        // 過濾出回溯時間範圍內的數據
         val recentReadings = readings.filter { it.timestamp >= lookbackStartTime }
-
-        // 如果回溯範圍內沒有足夠數據，返回 NONE
         if (recentReadings.size < 2) return TrendArrow.NONE
 
-        // 計算回溯範圍內 recalculated 的平均值
-        val previousRecalculatedAverage = recentReadings.drop(1).map { it.recalculated }.average()
+        val previousAverage = recentReadings.drop(1).map { it.recalculated }.average()
 
-        // 避免除以0的情況
         val slope = if (current.timestamp == lookbackStartTime) 0.0
-        else (current.recalculated - previousRecalculatedAverage) / (current.timestamp - lookbackStartTime)
+        else (current.recalculated - previousAverage) / (current.timestamp - lookbackStartTime)
 
-        aapsLogger.info(LTag.APS, "lookbackStartTime: $lookbackStartTime, previousRecalculatedAverage: $previousRecalculatedAverage")
+        aapsLogger.info(LTag.APS, "lookbackStartTime: $lookbackStartTime, previousRecalculatedAverage: $previousAverage")
 
         val slopeByMinute = slope * 60000
 
-        // 根據斜率判斷趨勢
         return when {
             slopeByMinute <= -3.5 -> TrendArrow.DOUBLE_DOWN
             slopeByMinute <= -2   -> TrendArrow.SINGLE_DOWN

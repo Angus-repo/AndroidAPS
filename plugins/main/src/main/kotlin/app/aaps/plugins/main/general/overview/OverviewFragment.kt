@@ -893,7 +893,6 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
             setRibbon(binding.activeProfile, profileTextColor, profileBackgroundColor, profileFunction.getProfileNameWithRemainingTime())
         }
     }
-
     private fun updateTemporaryBasal() {
         val temporaryBasalText = overviewData.temporaryBasalText()
         val temporaryBasalColor = overviewData.temporaryBasalColor(context)
