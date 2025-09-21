@@ -143,13 +143,15 @@ class BGSourceFragment : DaggerFragment(), MenuProvider {
             holder.binding.time.text = dateUtil.timeStringWithSeconds(glucoseValue.timestamp)
             holder.binding.value.text = profileUtil.fromMgdlToStringInUnits(glucoseValue.value)
             val customEnabled = preferences.get(BooleanKey.OverviewUseCustomTrendCalculator)
-            val showCustom = customEnabled && preferences.get(BooleanKey.OverviewShowSourceTrendArrow)
+            val showSource = preferences.get(BooleanKey.OverviewShowSourceTrendArrow)
 
-            holder.binding.direction.visibility = View.VISIBLE
-            holder.binding.direction.setImageResource(glucoseValue.trendArrow.directionToIcon())
+            holder.binding.direction.visibility = showSource.toVisibility()
+            if (showSource) {
+                holder.binding.direction.setImageResource(glucoseValue.trendArrow.directionToIcon())
+            }
 
-            val customArrow = if (showCustom) calculateCustomArrow(glucoseValues, position) else TrendArrow.NONE
-            if (showCustom && customArrow != TrendArrow.NONE) {
+            val customArrow = if (customEnabled) calculateCustomArrow(glucoseValues, position) else TrendArrow.NONE
+            if (customEnabled && customArrow != TrendArrow.NONE) {
                 holder.binding.customDirection.visibility = View.VISIBLE
                 holder.binding.customDirection.setImageResource(customArrow.directionToIcon())
                 holder.binding.customDirection.setColorFilter(rh.gc(app.aaps.core.ui.R.color.widget_inrange))
@@ -195,7 +197,7 @@ class BGSourceFragment : DaggerFragment(), MenuProvider {
     private fun calculateCustomArrow(glucoseValues: List<GV>, position: Int): TrendArrow {
         val lookbackMinutes = preferences.get(IntKey.TrendCustomLookbackMinutes).coerceIn(5, 15)
         val currentReading = glucoseValues[position]
-        val lookbackStartTime = currentReading.timestamp - lookbackMinutes * 60 * 1000 + 1000 // add 1 second to include the current point
+        val lookbackStartTime = currentReading.timestamp - lookbackMinutes * 60 * 1000
         val readings = mutableListOf<InMemoryGlucoseValue>()
         for (i in position until glucoseValues.size) {
             val gv = glucoseValues[i]
