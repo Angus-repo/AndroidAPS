@@ -62,8 +62,7 @@ class TrendCalculatorCustomImpl @Inject constructor(
 
         // val slope = if (current.timestamp == lookbackStartTime) 0.0
         // else (current.recalculated - previousAverage) * lookbackMinutes / (current.timestamp - lookbackStartTime)
-        val slope = if (current.timestamp == lookbackStartTime) 0.0
-        else (current.recalculated - previousAverage) / lookbackMinutes
+        val slope = (current.recalculated - previousAverage) / lookbackMinutes
 
         aapsLogger.info(LTag.APS, "trend_custom: (current.recalculated - previousAverage): (${current.recalculated} - $previousAverage)")
         aapsLogger.info(LTag.APS, "trend_custom: slope: $slope, previousRecalculatedAverage: $previousAverage")
