@@ -85,7 +85,6 @@ import app.aaps.core.interfaces.utils.DecimalFormatter
 import app.aaps.core.interfaces.utils.TrendCalculator
 import app.aaps.core.interfaces.utils.fabric.FabricPrivacy
 import app.aaps.core.keys.BooleanKey
-import app.aaps.core.keys.IntKey
 import app.aaps.core.keys.DoubleKey
 import app.aaps.core.keys.Preferences
 import app.aaps.core.keys.UnitDoubleKey
@@ -829,12 +828,11 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
             _binding ?: return@runOnUiThread
             binding.infoLayout.bg.text = profileUtil.fromMgdlToStringInUnits(lastBg?.recalculated)
             binding.infoLayout.bg.setTextColor(lastBgColor)
-            val customArrow = if (customEnabled) calculateCustomTrendArrow() else null
-            val fallbackArrow = lastBg?.trendArrow?.takeIf { it != TrendArrow.NONE } ?: trendArrow
-            val arrowToDisplay = if (customEnabled) customArrow else fallbackArrow
+            val arrowToDisplay = trendArrow ?: lastBg?.trendArrow?.takeIf { it != TrendArrow.NONE }
             arrowToDisplay?.let { binding.infoLayout.arrow.setImageResource(it.directionToIcon()) }
             binding.infoLayout.arrow.visibility = (arrowToDisplay != null).toVisibilityKeepSpace()
-            binding.infoLayout.arrow.setColorFilter(lastBgColor)
+            val arrowColor = if (customEnabled && arrowToDisplay != null) rh.gc(app.aaps.core.ui.R.color.widget_inrange) else lastBgColor
+            binding.infoLayout.arrow.setColorFilter(arrowColor)
             binding.infoLayout.arrow.contentDescription = lastBgDescription + " " + rh.gs(app.aaps.core.ui.R.string.and) + " " + trendDescription
 
             if (glucoseStatus != null) {
@@ -874,33 +872,6 @@ class OverviewFragment : DaggerFragment(), View.OnClickListener, OnLongClickList
                 binding.infoLayout.bgQuality.visibility = View.GONE
             }
             binding.infoLayout.simpleMode.visibility = preferences.simpleMode.toVisibility()
-        }
-    }
-
-    private fun calculateCustomTrendArrow(): TrendArrow? {
-        val data = iobCobCalculator.ads.getBucketedDataTableCopy() ?: return null
-        if (data.size < 2) return null
-
-        val lookbackMinutes = preferences.get(IntKey.TrendCustomLookbackMinutes).coerceAtLeast(1)
-        val current = data[0]
-        val lookbackStartTime = current.timestamp - lookbackMinutes * 60 * 1000
-        val recentReadings = data.filter { it.timestamp >= lookbackStartTime }
-        if (recentReadings.size < 2) return null
-
-        val previousAverage = recentReadings.drop(1).map { it.recalculated }.average()
-        val slope = if (current.timestamp == lookbackStartTime) 0.0
-        else (current.recalculated - previousAverage) / (current.timestamp - lookbackStartTime)
-        val slopeByMinute = slope * 60000
-
-        return when {
-            slopeByMinute <= -3.5 -> TrendArrow.DOUBLE_DOWN
-            slopeByMinute <= -2   -> TrendArrow.SINGLE_DOWN
-            slopeByMinute <= -1   -> TrendArrow.FORTY_FIVE_DOWN
-            slopeByMinute <= 1    -> TrendArrow.FLAT
-            slopeByMinute <= 2    -> TrendArrow.FORTY_FIVE_UP
-            slopeByMinute <= 3.5  -> TrendArrow.SINGLE_UP
-            slopeByMinute <= 40   -> TrendArrow.DOUBLE_UP
-            else                  -> TrendArrow.NONE
         }
     }
 

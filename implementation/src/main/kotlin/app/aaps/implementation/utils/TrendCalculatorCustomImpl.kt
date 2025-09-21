@@ -22,12 +22,7 @@ class TrendCalculatorCustomImpl @Inject constructor(
     override fun getTrendArrow(autosensDataStore: AutosensDataStore): TrendArrow? {
         val data = autosensDataStore.getBucketedDataTableCopy() ?: return null
         if (data.isEmpty()) return null
-        val glucoseValue = data[0]
-        return when {
-            glucoseValue.value != glucoseValue.recalculated -> calculateDirection(data) // always recalc
-            glucoseValue.trendArrow != TrendArrow.NONE      -> glucoseValue.trendArrow
-            else                                            -> calculateDirection(data)
-        }
+        return calculateDirection(data)
     }
 
     override fun getTrendDescription(autosensDataStore: AutosensDataStore): String {
@@ -51,19 +46,29 @@ class TrendCalculatorCustomImpl @Inject constructor(
         if (readings.size < 2) return TrendArrow.NONE
 
         val current = readings[0]
-        val lookbackStartTime = current.timestamp - lookbackMinutes * 60 * 1000
+        val lookbackStartTime = current.timestamp - lookbackMinutes * 60 * 1000 - 1000 // 1 second tolerance
+
+        aapsLogger.info(LTag.APS, "trend_custom: current.timestamp: $current.timestamp, lookbackMinutes: $lookbackMinutes")
+
 
         val recentReadings = readings.filter { it.timestamp >= lookbackStartTime }
         if (recentReadings.size < 2) return TrendArrow.NONE
 
+
         val previousAverage = recentReadings.drop(1).map { it.recalculated }.average()
 
+        aapsLogger.info(LTag.APS, "trend_custom: current.recalculated: $current.recalculated, previousAverage: $previousAverage = recentReadings: ($current.recalculated - $previousAverage)")
+
+
+        // val slope = if (current.timestamp == lookbackStartTime) 0.0
+        // else (current.recalculated - previousAverage) * lookbackMinutes / (current.timestamp - lookbackStartTime)
         val slope = if (current.timestamp == lookbackStartTime) 0.0
-        else (current.recalculated - previousAverage) / (current.timestamp - lookbackStartTime)
+        else (current.recalculated - previousAverage) / lookbackMinutes
 
-        aapsLogger.info(LTag.APS, "lookbackStartTime: $lookbackStartTime, previousRecalculatedAverage: $previousAverage")
+        aapsLogger.info(LTag.APS, "trend_custom: (current.recalculated - previousAverage): (${current.recalculated} - $previousAverage)")
+        aapsLogger.info(LTag.APS, "trend_custom: slope: $slope, previousRecalculatedAverage: $previousAverage")
 
-        val slopeByMinute = slope * 60000
+        val slopeByMinute = slope //slope * 60000
 
         return when {
             slopeByMinute <= -3.5 -> TrendArrow.DOUBLE_DOWN
