@@ -192,12 +192,12 @@ open class VirtualPumpPlugin @Inject constructor(
             .enacted(detailedBolusInfo.insulin > 0 || detailedBolusInfo.carbs > 0)
             .comment(rh.gs(app.aaps.core.ui.R.string.virtualpump_resultok))
         val bolusingEvent = EventOverviewBolusProgress
-        bolusingEvent.t = EventOverviewBolusProgress.Treatment(0.0, 0, detailedBolusInfo.bolusType == BS.Type.SMB, detailedBolusInfo.id)
         var delivering = 0.0
         while (delivering < detailedBolusInfo.insulin) {
             SystemClock.sleep(200)
             bolusingEvent.status = rh.gs(app.aaps.core.ui.R.string.bolus_delivering, delivering)
             bolusingEvent.percent = min((delivering / detailedBolusInfo.insulin * 100).toInt(), 100)
+            bolusingEvent.t = EventOverviewBolusProgress.Treatment(detailedBolusInfo.insulin, 0, detailedBolusInfo.bolusType == BS.Type.SMB, detailedBolusInfo.id)
             rxBus.send(bolusingEvent)
             delivering += 0.1
             if (BolusProgressData.stopPressed)
