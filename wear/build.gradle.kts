@@ -82,6 +82,26 @@ android {
             dimension = "standard"
             versionName = Versions.appVersion + "-aapsclient2"
         }
+        create("aapsclient3") {
+            applicationId = "info.nightscout.aapsclient3"
+            dimension = "standard"
+            versionName = Versions.appVersion + "-aapsclient3"
+        }
+        create("aapsclient4") {
+            applicationId = "info.nightscout.aapsclient4"
+            dimension = "standard"
+            versionName = Versions.appVersion + "-aapsclient4"
+        }
+        create("aapsclient5") {
+            applicationId = "info.nightscout.aapsclient5"
+            dimension = "standard"
+            versionName = Versions.appVersion + "-aapsclient5"
+        }
+        create("aapsclient6") {
+            applicationId = "info.nightscout.aapsclient6"
+            dimension = "standard"
+            versionName = Versions.appVersion + "-aapsclient6"
+        }
     }
     buildFeatures {
         buildConfig = true

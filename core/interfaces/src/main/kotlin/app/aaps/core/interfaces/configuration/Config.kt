@@ -8,6 +8,10 @@ interface Config {
     val AAPSCLIENT: Boolean // aapsclient || aapsclient2
     val AAPSCLIENT1: Boolean // aapsclient
     val AAPSCLIENT2: Boolean // aapsclient2
+    val AAPSCLIENT3: Boolean
+    val AAPSCLIENT4: Boolean
+    val AAPSCLIENT5: Boolean
+    val AAPSCLIENT6: Boolean
     val PUMPCONTROL: Boolean
     val PUMPDRIVERS: Boolean
     val FLAVOR: String

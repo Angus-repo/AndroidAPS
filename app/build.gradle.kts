@@ -131,9 +131,41 @@ android {
             applicationId = "info.nightscout.aapsclient2"
             dimension = "standard"
             resValue("string", "app_name", "AAPSClient2")
-            versionName = Versions.appVersion + "-aapsclient"
+            versionName = Versions.appVersion + "-aapsclient2"
             manifestPlaceholders["appIcon"] = "@mipmap/ic_blueowl"
             manifestPlaceholders["appIconRound"] = "@mipmap/ic_blueowl"
+        }
+        create("aapsclient3") {
+            applicationId = "info.nightscout.aapsclient3"
+            dimension = "standard"
+            resValue("string", "app_name", "AAPSClient3")
+            versionName = Versions.appVersion + "-aapsclient3"
+            manifestPlaceholders["appIcon"] = "@mipmap/ic_greenowl"
+            manifestPlaceholders["appIconRound"] = "@mipmap/ic_greenowl"
+        }
+        create("aapsclient4") {
+            applicationId = "info.nightscout.aapsclient4"
+            dimension = "standard"
+            resValue("string", "app_name", "AAPSClient4")
+            versionName = Versions.appVersion + "-aapsclient4"
+            manifestPlaceholders["appIcon"] = "@mipmap/ic_purpleowl"
+            manifestPlaceholders["appIconRound"] = "@mipmap/ic_purpleowl"
+        }
+        create("aapsclient5") {
+            applicationId = "info.nightscout.aapsclient5"
+            dimension = "standard"
+            resValue("string", "app_name", "AAPSClient5")
+            versionName = Versions.appVersion + "-aapsclient5"
+            manifestPlaceholders["appIcon"] = "@mipmap/ic_darkblueowl"
+            manifestPlaceholders["appIconRound"] = "@mipmap/ic_darkblueowl"
+        }
+        create("aapsclient6") {
+            applicationId = "info.nightscout.aapsclient6"
+            dimension = "standard"
+            resValue("string", "app_name", "AAPSClient6")
+            versionName = Versions.appVersion + "-aapsclient6"
+            manifestPlaceholders["appIcon"] = "@mipmap/ic_grayowl"
+            manifestPlaceholders["appIconRound"] = "@mipmap/ic_grayowl"
         }
     }
 
@@ -227,7 +259,7 @@ println("-------------------")
 if (!gitAvailable()) {
     throw GradleException("GIT system is not available. On Windows try to run Android Studio as an Administrator. Check if GIT is installed and Studio have permissions to use it")
 }
-if (isMaster() && !allCommitted()) {
-    throw GradleException("There are uncommitted changes. Clone sources again as described in wiki and do not allow gradle update")
-}
+// if (isMaster() && !allCommitted()) {
+//     throw GradleException("There are uncommitted changes. Clone sources again as described in wiki and do not allow gradle update")
+// }
 

@@ -56,6 +56,18 @@ android {
         create("aapsclient2") {
             dimension = "standard"
         }
+        create("aapsclient3") {
+            dimension = "standard"
+        }
+        create("aapsclient4") {
+            dimension = "standard"
+        }
+        create("aapsclient5") {
+            dimension = "standard"
+        }
+        create("aapsclient6") {
+            dimension = "standard"
+        }
     }
 
     buildFeatures {

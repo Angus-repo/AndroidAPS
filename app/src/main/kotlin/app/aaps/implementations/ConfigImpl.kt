@@ -16,9 +16,15 @@ class ConfigImpl @Inject constructor(
 
     override val SUPPORTED_NS_VERSION = 150000 // 15.0.0
     override val APS = BuildConfig.FLAVOR == "full"
-    override val AAPSCLIENT = BuildConfig.FLAVOR == "aapsclient" || BuildConfig.FLAVOR == "aapsclient2"
+    override val AAPSCLIENT = BuildConfig.FLAVOR == "aapsclient" || BuildConfig.FLAVOR == "aapsclient2" || 
+                              BuildConfig.FLAVOR == "aapsclient3" || BuildConfig.FLAVOR == "aapsclient4" || 
+                              BuildConfig.FLAVOR == "aapsclient5" || BuildConfig.FLAVOR == "aapsclient6"
     override val AAPSCLIENT1 = BuildConfig.FLAVOR == "aapsclient"
     override val AAPSCLIENT2 = BuildConfig.FLAVOR == "aapsclient2"
+    override val AAPSCLIENT3 = BuildConfig.FLAVOR == "aapsclient3"
+    override val AAPSCLIENT4 = BuildConfig.FLAVOR == "aapsclient4"
+    override val AAPSCLIENT5 = BuildConfig.FLAVOR == "aapsclient5"
+    override val AAPSCLIENT6 = BuildConfig.FLAVOR == "aapsclient6"
     override val PUMPCONTROL = BuildConfig.FLAVOR == "pumpcontrol"
     override val PUMPDRIVERS = BuildConfig.FLAVOR == "full" || BuildConfig.FLAVOR == "pumpcontrol"
     override val FLAVOR = BuildConfig.FLAVOR

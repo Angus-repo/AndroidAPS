@@ -6,17 +6,15 @@ on:
       buildVariant:
         description: 'Select Build Variant'
         required: true
-        default: 'fullRelease'
+        default: 'aapsclientRelease'
         type: choice
         options:
-          - fullRelease
-          - fullDebug
           - aapsclientRelease
-          - aapsclientDebug
           - aapsclient2Release
-          - aapsclient2Debug
-          - pumpcontrolRelease
-          - pumpcontrolDebug
+          - aapsclient3Release
+          - aapsclient4Release
+          - aapsclient5Release
+          - aapsclient6Release
 
 jobs:
   build:
