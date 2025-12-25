@@ -6,6 +6,7 @@ plugins {
     id("com.android.application")
     id("kotlin-android")
     kotlin("plugin.serialization")
+    id("kotlin-kapt")
     id("android-app-dependencies")
     id("test-app-dependencies")
     id("jacoco-app-dependencies")
@@ -133,6 +134,10 @@ dependencies {
     implementation(libs.com.google.android.gms.playservices.wearable)
     implementation(files("${rootDir}/wear/libs/hellocharts-library-1.5.8.aar"))
 
-    ksp(libs.com.google.dagger.android.processor)
-    ksp(libs.com.google.dagger.compiler)
+    // Dagger Android runtime
+    implementation(libs.com.google.dagger.android)
+    implementation(libs.com.google.dagger.android.support)
+    // Use KAPT for Dagger processors in wear module for stability
+    kapt(libs.com.google.dagger.android.processor)
+    kapt(libs.com.google.dagger.compiler)
 }

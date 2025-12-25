@@ -10,6 +10,58 @@ plugins {
 
 android {
     namespace = "app.aaps.plugins.configuration"
+    
+    testOptions {
+        unitTests.all {
+            // ==================== Google Drive Integration Test Configuration ====================
+            //
+            // The integration tests require a valid Google Drive refresh token.
+            // Without it, integration tests will be skipped (unit tests will still run).
+            //
+            // === How to obtain a refresh token ===
+            // 1. Download aaps-ci-preparation.html (v1.1.3 or later) from:
+            //    https://github.com/nightscout/aaps-ci-preparation/releases
+            // 2. Open the downloaded HTML file in a browser and select "Custom" mode
+            // 3. Enter Client ID: 705061051276-3ied5cqa3kqhb0hpr7p0rggoffhq46ef.apps.googleusercontent.com
+            // 4. Click "Start Auth" and complete the OAuth flow
+            // 5. The page will show a Base64 encoded string (format: client_id|refresh_token)
+            // 6. Decode the Base64 string: echo "YOUR_BASE64_STRING" | base64 -d
+            // 7. Extract the refresh token (the part after the pipe "|" character)
+            //
+            // === How to run tests with the token ===
+            // Option 1 - Environment variable:
+            //   export GOOGLE_DRIVE_REFRESH_TOKEN="1//0eXXX..."
+            //   ./gradlew :plugins:configuration:testFullReleaseUnitTest
+            //
+            // Option 2 - Inline environment variable:
+            //   GOOGLE_DRIVE_REFRESH_TOKEN="1//0eXXX..." ./gradlew :plugins:configuration:testFullReleaseUnitTest
+            //
+            // Option 3 - System property:
+            //   ./gradlew :plugins:configuration:testFullReleaseUnitTest -DGOOGLE_DRIVE_REFRESH_TOKEN="1//0eXXX..."
+            //
+            // ======================================================================================
+            
+            val systemPropToken = System.getProperty("GOOGLE_DRIVE_REFRESH_TOKEN")
+            val envToken = System.getenv("GOOGLE_DRIVE_REFRESH_TOKEN")
+            
+            val refreshToken = systemPropToken?.takeIf { it.isNotEmpty() }
+                ?: envToken?.takeIf { it.isNotEmpty() }
+            
+            val source = when {
+                !systemPropToken.isNullOrEmpty() -> "system property"
+                !envToken.isNullOrEmpty() -> "environment variable"
+                else -> "none"
+            }
+            
+            println("[build.gradle.kts] GOOGLE_DRIVE_REFRESH_TOKEN source: $source")
+            if (!refreshToken.isNullOrEmpty()) {
+                println("[build.gradle.kts] Setting GOOGLE_DRIVE_REFRESH_TOKEN (${refreshToken.length} chars)")
+                it.environment("GOOGLE_DRIVE_REFRESH_TOKEN", refreshToken)
+            } else {
+                println("[build.gradle.kts] WARNING: No GOOGLE_DRIVE_REFRESH_TOKEN - integration tests will be skipped")
+            }
+        }
+    }
 }
 
 
@@ -31,6 +83,12 @@ dependencies {
     api(libs.androidx.work.runtime)
     // Maintenance
     api(libs.androidx.gridlayout)
+    
+    // HTTP client for Google Drive API
+    implementation(libs.com.squareup.okhttp3.okhttp)
+
+    // Chrome Custom Tabs for OAuth flow
+    api(libs.androidx.browser)
 
     ksp(libs.com.google.dagger.compiler)
     ksp(libs.com.google.dagger.android.processor)
