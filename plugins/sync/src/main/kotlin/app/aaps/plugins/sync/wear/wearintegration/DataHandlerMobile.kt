@@ -41,6 +41,7 @@ import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.profile.ProfileUtil
 import app.aaps.core.interfaces.pump.DetailedBolusInfo
 import app.aaps.core.interfaces.pump.PumpStatusProvider
+import app.aaps.core.interfaces.pump.PumpSync
 import app.aaps.core.interfaces.pump.defs.determineCorrectBolusStepSize
 import app.aaps.core.interfaces.queue.Callback
 import app.aaps.core.interfaces.queue.CommandQueue
@@ -53,6 +54,10 @@ import app.aaps.core.interfaces.rx.events.EventWearUpdateGui
 import app.aaps.core.interfaces.rx.weardata.CwfMetadataKey
 import app.aaps.core.interfaces.rx.weardata.EventData
 import app.aaps.core.interfaces.rx.weardata.EventData.LoopStatesList.AvailableLoopState
+import app.aaps.core.interfaces.rx.weardata.LoopStatusData
+import app.aaps.core.interfaces.rx.weardata.TempTargetInfo
+import app.aaps.core.interfaces.rx.weardata.TargetRange
+import app.aaps.core.interfaces.rx.weardata.OapsResultInfo
 import app.aaps.core.interfaces.ui.UiInteraction
 import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.interfaces.utils.DecimalFormatter
@@ -194,6 +199,22 @@ class DataHandlerMobile @Inject constructor(
                                )
                            )
                        }, fabricPrivacy::logException)
+        disposable += rxBus
+            .toObservable(EventData.ActionLoopStatusDetailed::class.java)
+            .observeOn(aapsSchedulers.io)
+            .subscribe({
+                           aapsLogger.debug(LTag.WEAR, "ActionLoopStatusDetailed received from ${it.sourceNodeId}")
+                           val statusData = buildLoopStatusData()
+                           rxBus.send(
+                               EventMobileToWear(
+                                   EventData.LoopStatusResponse(
+                                       timeStamp = System.currentTimeMillis(),
+                                       data = statusData
+                                   )
+                               )
+                           )
+                       }, fabricPrivacy::logException)
+
         disposable += rxBus
             .toObservable(EventData.LoopStatesRequest::class.java)
             .observeOn(aapsSchedulers.io)
@@ -409,6 +430,133 @@ class DataHandlerMobile @Inject constructor(
                            aapsLogger.debug(LTag.WEAR, "Custom Watch face ${it.customWatchface} received from ${it.sourceNodeId}")
                            handleGetCustomWatchface(it)
                        }, fabricPrivacy::logException)
+    }
+
+    private fun buildLoopStatusData(): LoopStatusData {
+        val tempTarget = persistenceLayer.getTemporaryTargetActiveAt(dateUtil.now())
+        val profile = profileFunction.getProfile()
+        val lastRun = loop.lastRun
+        val usedAPS = activePlugin.activeAPS
+
+        // Map loop mode
+        val loopMode = when (loop.runningMode) {
+            RM.Mode.CLOSED_LOOP -> LoopStatusData.LoopMode.CLOSED
+            RM.Mode.OPEN_LOOP -> LoopStatusData.LoopMode.OPEN
+            RM.Mode.CLOSED_LOOP_LGS -> LoopStatusData.LoopMode.LGS
+            RM.Mode.DISABLED_LOOP -> LoopStatusData.LoopMode.DISABLED
+            RM.Mode.SUSPENDED_BY_USER -> LoopStatusData.LoopMode.SUSPENDED
+            RM.Mode.DISCONNECTED_PUMP -> LoopStatusData.LoopMode.DISCONNECTED
+            RM.Mode.SUPER_BOLUS -> LoopStatusData.LoopMode.SUPERBOLUS
+            else -> LoopStatusData.LoopMode.UNKNOWN
+        }
+
+        // Build temp target info
+        val tempTargetInfo = tempTarget?.let {
+            val units = if (profileUtil.units == GlucoseUnit.MGDL) "mg/dL" else "mmol/L"
+            val targetString = profileUtil.toTargetRangeString(
+                it.lowTarget,
+                it.highTarget,
+                GlucoseUnit.MGDL
+            )
+            val durationMin = ((it.end - dateUtil.now()) / 60000).toInt()
+
+            TempTargetInfo(
+                targetDisplay = targetString,
+                endTime = it.end,
+                durationMinutes = durationMin,
+                units = units
+            )
+        }
+
+        // Build default range
+        val defaultRange = if (profile != null) {
+            val units = if (profileUtil.units == GlucoseUnit.MGDL) "mg/dL" else "mmol/L"
+            TargetRange(
+                lowDisplay = profileUtil.fromMgdlToStringInUnits(profile.getTargetLowMgdl()),
+                highDisplay = profileUtil.fromMgdlToStringInUnits(profile.getTargetHighMgdl()),
+                targetDisplay = profileUtil.fromMgdlToStringInUnits(profile.getTargetMgdl()),
+                units = units
+            )
+        } else {
+            TargetRange("--", "--", "--", "")
+        }
+
+        // Build OAPS result info
+        val oapsResultInfo = lastRun?.constraintsProcessed?.let { result ->
+            val constrainedRate = result.rate
+            val constrainedDuration = result.duration
+
+            // Check if this is "let temp basal run" scenario (no change requested)
+            val isLetTempRun = constrainedRate == 0.0 && constrainedDuration == -1
+
+            // Determine what to display
+            val (displayRate, displayDuration, displayPercent) = if (isLetTempRun) {
+                // Get currently running temp basal from database
+                val currentTbr = persistenceLayer.getTemporaryBasalActiveAt(dateUtil.now())
+
+                if (currentTbr != null) {
+                    // Calculate absolute rate
+                    val rate = if (currentTbr.isAbsolute && profile != null) {
+                        currentTbr.rate
+                    } else if (profile != null) {
+                        // Percent-based TBR - convert to absolute
+                        profile.getBasal(dateUtil.now()) * currentTbr.rate / 100.0
+                    } else {
+                        currentTbr.rate
+                    }
+
+                    // Calculate remaining duration
+                    val remainingMin = ((currentTbr.end - dateUtil.now()) / 60000).toInt()
+
+                    val percentValue = if (activePlugin.activePump.baseBasalRate > 0) {
+                        ((rate / activePlugin.activePump.baseBasalRate) * 100).toInt()
+                    } else 0
+
+                    aapsLogger.debug(LTag.WEAR, "Let temp run - rate: $rate U/h ($percentValue%), remaining: $remainingMin min")
+
+                    Triple(rate, remainingMin, percentValue)
+                } else {
+                    aapsLogger.debug(LTag.WEAR, "Let temp run requested but no active TBR found")
+                    Triple(null, null, null)
+                }
+            } else {
+                // Normal case - show the new requested values
+                val percentValue = if (result.usePercent) {
+                    result.percent
+                } else if (activePlugin.activePump.baseBasalRate > 0) {
+                    ((constrainedRate / activePlugin.activePump.baseBasalRate) * 100).toInt()
+                } else null
+
+                Triple(constrainedRate, constrainedDuration, percentValue)
+            }
+
+            // Cancel temp is when both rate AND duration are 0
+            // Don't confuse with 0.0 U/h TBR that has duration > 0
+            val isCancelTemp = displayRate == 0.0 && displayDuration == 0
+
+            OapsResultInfo(
+                changeRequested = result.isChangeRequested && !isLetTempRun,
+                isCancelTemp = isCancelTemp,
+                isLetTempRun = isLetTempRun,
+                rate = displayRate,
+                ratePercent = displayPercent,
+                duration = displayDuration,
+                reason = result.reason,
+                smbAmount = result.smb
+            )
+        }
+
+        return LoopStatusData(
+            timestamp = System.currentTimeMillis(),
+            loopMode = loopMode,
+            apsName = if (loop.runningMode.isLoopRunning())
+                (usedAPS as PluginBase).name else null,
+            lastRun = lastRun?.lastAPSRun,
+            lastEnact = lastRun?.lastTBREnact?.takeIf { it != 0L },
+            tempTarget = tempTargetInfo,
+            defaultRange = defaultRange,
+            oapsResult = oapsResultInfo
+        )
     }
 
     private fun handleTddStatus() {

@@ -11,6 +11,7 @@ import app.aaps.wear.interaction.actions.ECarbActivity
 import app.aaps.wear.interaction.actions.TempTargetActivity
 import app.aaps.wear.interaction.actions.TreatmentActivity
 import app.aaps.wear.interaction.actions.WizardActivity
+import app.aaps.wear.interaction.activities.LoopStatusActivity
 import app.aaps.wear.interaction.utils.MenuListActivity
 
 class MainMenuActivity : MenuListActivity() {
@@ -27,6 +28,7 @@ class MainMenuActivity : MenuListActivity() {
                 add(MenuItem(R.drawable.ic_settings, getString(R.string.menu_settings)))
                 add(MenuItem(R.drawable.ic_sync, getString(R.string.menu_resync)))
             } else {
+                add(MenuItem(R.drawable.ic_loop_closed, getString(R.string.loop_status)))
                 if (sp.getBoolean(R.string.key_show_wizard, true))
                     add(MenuItem(R.drawable.ic_calculator, getString(R.string.menu_wizard)))
                 add(MenuItem(R.drawable.ic_e_carbs, getString(R.string.menu_ecarb)))
@@ -47,6 +49,10 @@ class MainMenuActivity : MenuListActivity() {
             getString(R.string.status_profile_switch) -> rxBus.send(EventWearToMobile(EventData.ActionProfileSwitchSendInitialData(System.currentTimeMillis())))
             getString(R.string.menu_tempt)            -> startActivity(Intent(this, TempTargetActivity::class.java))
             getString(R.string.menu_treatment)        -> startActivity(Intent(this, TreatmentActivity::class.java))
+            getString(R.string.loop_status) -> {
+                val intent = Intent(this, LoopStatusActivity::class.java)
+                startActivity(intent)
+            }
             getString(R.string.menu_wizard)           -> startActivity(Intent(this, WizardActivity::class.java))
             getString(R.string.menu_status)           -> startActivity(Intent(this, StatusMenuActivity::class.java))
             getString(R.string.menu_prime_fill)       -> startActivity(Intent(this, FillMenuActivity::class.java))

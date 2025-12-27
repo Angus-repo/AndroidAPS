@@ -28,6 +28,7 @@
     <string name="fw_version_label">Version du FW</string>
     <string name="patch_no_label">N° du Patch</string>
     <string name="patch_expiry_label">Expiration du Patch</string>
+    <string name="patch_activation_time_label">Activation</string>
     <string name="refresh_label">Actualiser</string>
     <string name="reset_alarms_label">Réinitialiser les alarmes</string>
     <string name="change_patch_label">Changer le Patch</string>
