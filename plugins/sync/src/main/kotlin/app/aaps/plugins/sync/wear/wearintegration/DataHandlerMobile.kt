@@ -435,8 +435,26 @@ class DataHandlerMobile @Inject constructor(
     private fun buildLoopStatusData(): LoopStatusData {
         val tempTarget = persistenceLayer.getTemporaryTargetActiveAt(dateUtil.now())
         val profile = profileFunction.getProfile()
-        val lastRun = loop.lastRun
         val usedAPS = activePlugin.activeAPS
+
+        // Get data based on app type
+        val (lastRunTimestamp, lastEnactTimestamp, apsResult) = if (config.APS) {
+            // AAPS - use local loop data
+            val lastRun = loop.lastRun
+            Triple(
+                lastRun?.lastAPSRun,
+                lastRun?.lastTBREnact?.takeIf { it != 0L },
+                lastRun?.constraintsProcessed
+            )
+        } else {
+            // AAPSClient - use data from NS/device status
+            val apsData = processedDeviceStatusData.openAPSData
+            Triple(
+                apsData.clockSuggested,
+                null, //apsData.clockEnacted not reliable
+                processedDeviceStatusData.getAPSResult()
+            )
+        }
 
         // Map loop mode
         val loopMode = when (loop.runningMode) {
@@ -482,12 +500,18 @@ class DataHandlerMobile @Inject constructor(
         }
 
         // Build OAPS result info
-        val oapsResultInfo = lastRun?.constraintsProcessed?.let { result ->
+        val oapsResultInfo = apsResult?.let { result ->
             val constrainedRate = result.rate
             val constrainedDuration = result.duration
 
-            // Check if this is "let temp basal run" scenario (no change requested)
-            val isLetTempRun = constrainedRate == 0.0 && constrainedDuration == -1
+            // Check if this is "let temp basal run" scenario
+            // AAPS: rate=0.0 and duration=-1
+            // AAPSClient: rate=-1.0 and duration=-1
+            val isLetTempRun = if (config.APS) {
+                constrainedRate == 0.0 && constrainedDuration == -1
+            } else {
+                constrainedRate == -1.0 && constrainedDuration == -1
+            }
 
             // Determine what to display
             val (displayRate, displayDuration, displayPercent) = if (isLetTempRun) {
@@ -496,7 +520,7 @@ class DataHandlerMobile @Inject constructor(
 
                 if (currentTbr != null) {
                     // Calculate absolute rate
-                    val rate = if (currentTbr.isAbsolute && profile != null) {
+                    val rate = if (currentTbr.isAbsolute) {
                         currentTbr.rate
                     } else if (profile != null) {
                         // Percent-based TBR - convert to absolute
@@ -527,16 +551,19 @@ class DataHandlerMobile @Inject constructor(
                     ((constrainedRate / activePlugin.activePump.baseBasalRate) * 100).toInt()
                 } else null
 
-                Triple(constrainedRate, constrainedDuration, percentValue)
-            }
+                // For AAPSClient, use current TBR rate if available, otherwise use constrained rate
+                val finalRate = if (!config.APS) {
+                    val currentTbr = persistenceLayer.getTemporaryBasalActiveAt(dateUtil.now())
+                    currentTbr?.rate ?: constrainedRate
+                } else {
+                    constrainedRate
+                }
 
-            // Cancel temp is when both rate AND duration are 0
-            // Don't confuse with 0.0 U/h TBR that has duration > 0
-            val isCancelTemp = displayRate == 0.0 && displayDuration == 0
+                Triple(finalRate, constrainedDuration, percentValue)
+            }
 
             OapsResultInfo(
                 changeRequested = result.isChangeRequested && !isLetTempRun,
-                isCancelTemp = isCancelTemp,
                 isLetTempRun = isLetTempRun,
                 rate = displayRate,
                 ratePercent = displayPercent,
@@ -551,8 +578,8 @@ class DataHandlerMobile @Inject constructor(
             loopMode = loopMode,
             apsName = if (loop.runningMode.isLoopRunning())
                 (usedAPS as PluginBase).name else null,
-            lastRun = lastRun?.lastAPSRun,
-            lastEnact = lastRun?.lastTBREnact?.takeIf { it != 0L },
+            lastRun = lastRunTimestamp,
+            lastEnact = lastEnactTimestamp,
             tempTarget = tempTargetInfo,
             defaultRange = defaultRange,
             oapsResult = oapsResultInfo
