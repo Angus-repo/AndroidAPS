@@ -70,21 +70,6 @@ class GoogleDriveManager @Inject constructor(
     private var authLauncher: ActivityResultLauncher<Intent>? = null
     private val pathCache = mutableMapOf<String, String>() // cache for resolved folder paths
 
-    // Wrapper log helpers to ensure logs preserved in release builds (use info level)
-    private fun gLog(message: String) {
-        aapsLogger.info(LTag.CORE, "$LOG_PREFIX $message")
-    }
-    private fun gErr(message: String, t: Throwable? = null) { 
-        aapsLogger.error(LTag.CORE, "$LOG_PREFIX $message", t) 
-        if (t != null) {
-            // Force output exception details
-            aapsLogger.error(LTag.CORE, "$LOG_PREFIX EXCEPTION_DETAIL: ${t.javaClass.name}: ${t.message}")
-            t.stackTrace.take(5).forEach { 
-                aapsLogger.error(LTag.CORE, "$LOG_PREFIX   at $it")
-            }
-        }
-    }
-    
     // Error state tracking
     private var connectionError = false
     private var errorNotificationId: Int? = null
@@ -378,7 +363,7 @@ class GoogleDriveManager @Inject constructor(
                     if (id == null) {
                         aapsLogger.error(LTag.CORE, "$LOG_PREFIX GDRIVE Create folder missing id for name='$name' under parent=$parentId body=$responseBody")
                     }else{
-                        gLog("FOLDER_CREATE_OK name='$name' parent=$parentId id=$id")
+                        aapsLogger.info(LTag.CORE, "$LOG_PREFIX FOLDER_CREATE_OK name='$name' parent=$parentId id=$id")
                     }
                     return@withContext id
                 } else {
@@ -408,9 +393,9 @@ class GoogleDriveManager @Inject constructor(
                 val inferredPath = inferCloudPathFor(fileName)
                 val folderId = resolveFolderIdForUpload(inferredPath) ?: return@withContext null
                 if (inferredPath != null) {
-                    gLog("UPLOAD_START pathHint='$inferredPath' usingFolderId=$folderId file=$fileName size=${fileContent.size} mimeHint=$mimeType")
+                    aapsLogger.info(LTag.CORE, "$LOG_PREFIX UPLOAD_START pathHint='$inferredPath' usingFolderId=$folderId file=$fileName size=${fileContent.size} mimeHint=$mimeType")
                 } else {
-                    gLog("UPLOAD_START noPathHint usingFolderId=$folderId file=$fileName size=${fileContent.size} mimeHint=$mimeType")
+                    aapsLogger.info(LTag.CORE, "$LOG_PREFIX UPLOAD_START noPathHint usingFolderId=$folderId file=$fileName size=${fileContent.size} mimeHint=$mimeType")
                 }
 
                 // Metadata JSON body with its own Content-Type
@@ -422,7 +407,7 @@ class GoogleDriveManager @Inject constructor(
 
                 // File body with its own Content-Type (guess when needed)
                 val effectiveMime = guessMimeType(fileName, mimeType)
-                if (effectiveMime != mimeType) gLog("MIME_ADJUST original=$mimeType effective=$effectiveMime file=$fileName")
+                if (effectiveMime != mimeType) aapsLogger.info(LTag.CORE, "$LOG_PREFIX MIME_ADJUST original=$mimeType effective=$effectiveMime file=$fileName")
                 val mediaBody = fileContent.toRequestBody(effectiveMime.toMediaType())
 
                 val multipart = MultipartBody.Builder()
@@ -441,14 +426,14 @@ class GoogleDriveManager @Inject constructor(
 
                 val response = client.newCall(request).execute()
                 val responseBodyStr = response.body?.string() ?: ""
-                gLog("UPLOAD_RESPONSE code=${response.code} message='${response.message}' hasBody=${responseBodyStr.isNotEmpty()} folderId=$folderId file=$fileName")
-                if (responseBodyStr.isNotEmpty()) gLog("UPLOAD_RESPONSE_BODY ${responseBodyStr.take(500)}")
+                aapsLogger.info(LTag.CORE, "$LOG_PREFIX UPLOAD_RESPONSE code=${response.code} message='${response.message}' hasBody=${responseBodyStr.isNotEmpty()} folderId=$folderId file=$fileName")
+                if (responseBodyStr.isNotEmpty()) aapsLogger.info(LTag.CORE, "$LOG_PREFIX UPLOAD_RESPONSE_BODY ${responseBodyStr.take(500)}")
 
                 if (response.isSuccessful) {
                     val jsonResponse = JSONObject(responseBodyStr.ifEmpty { "{}" })
                     val id = jsonResponse.optString("id").takeIf { it.isNotEmpty() }
                     if (id == null) {
-                        gErr("UPLOAD_NO_ID folderId=$folderId file=$fileName rawBody='${responseBodyStr.take(200)}'")
+                        aapsLogger.error(LTag.CORE, "$LOG_PREFIX UPLOAD_NO_ID folderId=$folderId file=$fileName rawBody='${responseBodyStr.take(200)}'")
                         showConnectionError(rh.gs(R.string.google_drive_upload_no_id))
                         return@withContext null
                     }
@@ -456,22 +441,22 @@ class GoogleDriveManager @Inject constructor(
                     val verified = verifyFileExists(id, accessToken)
                     return@withContext if (verified) {
                         clearConnectionError()
-                        gLog("UPLOAD_OK id=$id file=$fileName folderId=$folderId")
+                        aapsLogger.info(LTag.CORE, "$LOG_PREFIX UPLOAD_OK id=$id file=$fileName folderId=$folderId")
                         logFilePathChain(id, accessToken, "UPLOAD_OK_CHAIN")
                         debugListFolderSnapshot(folderId, accessToken, label = "AFTER_UPLOAD")
                         id
                     } else {
-                        gErr("UPLOAD_VERIFY_FAIL id=$id file=$fileName folderId=$folderId")
+                        aapsLogger.error(LTag.CORE, "$LOG_PREFIX UPLOAD_VERIFY_FAIL id=$id file=$fileName folderId=$folderId")
                         showConnectionError(rh.gs(R.string.google_drive_upload_verify_failed))
                         null
                     }
                 } else {
-                    gErr("UPLOAD_FAIL code=${response.code} message='${response.message}' folderId=$folderId body=${responseBodyStr.take(300)}")
+                    aapsLogger.error(LTag.CORE, "$LOG_PREFIX UPLOAD_FAIL code=${response.code} message='${response.message}' folderId=$folderId body=${responseBodyStr.take(300)}")
                     showConnectionError(rh.gs(R.string.google_drive_upload_failed, response.code.toString()))
                     null
                 }
             } catch (e: Exception) {
-                gErr("EXCEPTION uploadFile file=$fileName", e)
+                aapsLogger.error(LTag.CORE, "$LOG_PREFIX EXCEPTION uploadFile file=$fileName", e)
                 showConnectionError(rh.gs(R.string.google_drive_upload_error, e.message ?: ""))
                 null
             }
@@ -503,7 +488,7 @@ class GoogleDriveManager @Inject constructor(
      */
     private suspend fun ensureCloudPathOrError(path: String): String? {
         val normalized = normalizeAapsPath(path) ?: path
-        if (normalized != path) gLog("ENSURE_PATH_NORMALIZE original='$path' normalized='$normalized'")
+        if (normalized != path) aapsLogger.info(LTag.CORE, "$LOG_PREFIX ENSURE_PATH_NORMALIZE original='$path' normalized='$normalized'")
         val id = getOrCreateFolderPath(normalized)
         if (id.isNullOrEmpty()) {
             aapsLogger.error(LTag.CORE, "$LOG_PREFIX Unable to ensure cloud path '$normalized'")
@@ -519,24 +504,24 @@ class GoogleDriveManager @Inject constructor(
             if (ensured != null) {
                 val stored = getSelectedFolderId()
                 if (stored != ensured) {
-                    gLog("FOLDER_RESOLVE_UPDATE path='$pathHint' newId=$ensured oldId=${stored?.ifEmpty { "<empty>" } ?: "<null>"}")
+                    aapsLogger.info(LTag.CORE, "$LOG_PREFIX FOLDER_RESOLVE_UPDATE path='$pathHint' newId=$ensured oldId=${stored?.ifEmpty { "<empty>" } ?: "<null>"}")
                     setSelectedFolderId(ensured)
                 } else {
-                    gLog("FOLDER_RESOLVE_REUSE path='$pathHint' id=$ensured")
+                    aapsLogger.info(LTag.CORE, "$LOG_PREFIX FOLDER_RESOLVE_REUSE path='$pathHint' id=$ensured")
                 }
             } else {
-                gErr("FOLDER_RESOLVE_FAILED path='$pathHint'")
+                aapsLogger.error(LTag.CORE, "$LOG_PREFIX FOLDER_RESOLVE_FAILED path='$pathHint'")
             }
             return ensured
         }
 
         val stored = getSelectedFolderId()?.ifEmpty { null }
         if (stored != null) {
-            gLog("FOLDER_RESOLVE_USE_STORED storedId=$stored pathHint='<none>'")
+            aapsLogger.info(LTag.CORE, "$LOG_PREFIX FOLDER_RESOLVE_USE_STORED storedId=$stored pathHint='<none>'")
             return stored
         }
 
-        gLog("FOLDER_RESOLVE_DEFAULT_ROOT")
+        aapsLogger.info(LTag.CORE, "$LOG_PREFIX FOLDER_RESOLVE_DEFAULT_ROOT")
         return "root"
     }
 
@@ -544,7 +529,7 @@ class GoogleDriveManager @Inject constructor(
      * Set selected folder ID
      */
     fun setSelectedFolderId(folderId: String) {
-        gLog("SET_SELECTED_FOLDER folderId=$folderId")
+        aapsLogger.info(LTag.CORE, "$LOG_PREFIX SET_SELECTED_FOLDER folderId=$folderId")
         sp.putString(PREF_GOOGLE_DRIVE_FOLDER_ID, folderId)
     }
     
@@ -553,7 +538,7 @@ class GoogleDriveManager @Inject constructor(
      */
     fun getSelectedFolderId(): String {
         val folderId = sp.getString(PREF_GOOGLE_DRIVE_FOLDER_ID, "")
-        gLog("GET_SELECTED_FOLDER folderId='$folderId'")
+        aapsLogger.info(LTag.CORE, "$LOG_PREFIX GET_SELECTED_FOLDER folderId='$folderId'")
         return folderId
     }
     
@@ -924,7 +909,7 @@ class GoogleDriveManager @Inject constructor(
             val query = "'$folderId' in parents and trashed=false"
             val encodedQuery = URLEncoder.encode(query, "UTF-8")
             val url = "$DRIVE_API_URL/files?q=$encodedQuery&fields=files(id,name,modifiedTime,mimeType)&pageSize=50&supportsAllDrives=true&includeItemsFromAllDrives=true"
-            gLog("LIST_SETTINGS_FILES_START folderId=$folderId query='$query' encodedQuery=$encodedQuery")
+            aapsLogger.info(LTag.CORE, "$LOG_PREFIX LIST_SETTINGS_FILES_START folderId=$folderId query='$query' encodedQuery=$encodedQuery")
             val request = Request.Builder()
                 .url(url)
                 .header("Authorization", "Bearer $accessToken")
@@ -932,12 +917,12 @@ class GoogleDriveManager @Inject constructor(
             val response = client.newCall(request).execute()
             val body = response.body?.string() ?: ""
             if (!response.isSuccessful) {
-                gErr("FOLDER_LIST_FAIL folderId=$folderId code=${response.code} body=${body.take(300)}")
+                aapsLogger.error(LTag.CORE, "$LOG_PREFIX FOLDER_LIST_FAIL folderId=$folderId code=${response.code} body=${body.take(300)}")
                 showConnectionError(rh.gs(R.string.google_drive_list_settings_failed))
                 return@withContext emptyList()
             }
             clearConnectionError()
-            gLog("LIST_SETTINGS_FILES_OK count=${body.length} folderId=$folderId")
+            aapsLogger.info(LTag.CORE, "$LOG_PREFIX LIST_SETTINGS_FILES_OK count=${body.length} folderId=$folderId")
             val json = JSONObject(body)
             val arr = json.optJSONArray("files") ?: JSONArray()
             val result = mutableListOf<DriveFile>()
@@ -990,7 +975,7 @@ class GoogleDriveManager @Inject constructor(
         try {
             val accessToken = getValidAccessToken() ?: return@withContext DriveFilePage(emptyList(), null)
             val folderId = getSelectedFolderId().ifEmpty { "root" }
-            gLog("LIST_SETTINGS_PAGED folderId='$folderId' pageToken=$pageToken pageSize=$pageSize")
+            aapsLogger.info(LTag.CORE, "$LOG_PREFIX LIST_SETTINGS_PAGED folderId='$folderId' pageToken=$pageToken pageSize=$pageSize")
             val query = "'$folderId' in parents and trashed=false"
             val encodedQuery = URLEncoder.encode(query, "UTF-8")
             val base = StringBuilder()
@@ -1038,7 +1023,7 @@ class GoogleDriveManager @Inject constructor(
         try {
             val accessToken = getValidAccessToken() ?: return@withContext 0
             val folderId = getSelectedFolderId().ifEmpty { "root" }
-            gLog("COUNT_SETTINGS_FILES folderId='$folderId'")
+            aapsLogger.info(LTag.CORE, "$LOG_PREFIX COUNT_SETTINGS_FILES folderId='$folderId'")
             val query = "'$folderId' in parents and trashed=false"
             val encodedQuery = URLEncoder.encode(query, "UTF-8")
             val namePattern = Regex("^\\d{4}-\\d{2}-\\d{2}_\\d{6}.*\\.json$", RegexOption.IGNORE_CASE)
@@ -1091,11 +1076,16 @@ class GoogleDriveManager @Inject constructor(
 
     /**
      * Get or create multi-level folders (expressed as path), return final folder ID.
-     * Example: path = "AAPS/export/preferences"
+     * All paths are automatically prefixed with "AAPS/" if not already present.
+     * Example: path = "export/preferences" -> creates "AAPS/export/preferences"
+     * 
+     * Special handling for "AAPS" folder: Always reuses existing AAPS folder if one exists in root.
      */
     suspend fun getOrCreateFolderPath(path: String, baseParentId: String = "root"): String? = withContext(Dispatchers.IO) {
         try {
-            var trimmed = path.trim('/',' ')
+            // Normalize path to always start with AAPS/
+            val normalizedPath = normalizeAapsPath(path) ?: return@withContext null
+            var trimmed = normalizedPath.trim('/',' ')
 
             val segments = trimmed.split('/').filter { it.isNotBlank() }
             var currentParentId = baseParentId
@@ -1107,31 +1097,32 @@ class GoogleDriveManager @Inject constructor(
                 val parentPath = accumulated.dropLast(1).joinToString("/")
                 val cachedId = pathCache[currentPath]
                 if (cachedId != null) {
-                    gLog("FOLDER_SEGMENT_CACHE_HIT level=${index + 1} path='/${currentPath}' id=$cachedId")
+                    aapsLogger.info(LTag.CORE, "$LOG_PREFIX FOLDER_SEGMENT_CACHE_HIT level=${index + 1} path='/${currentPath}' id=$cachedId")
                     currentParentId = cachedId
                     continue
                 }
 
                 val parentDisplay = if (parentPath.isEmpty()) "/" else "/$parentPath"
-                gLog("FOLDER_SEGMENT_CHECK level=${index + 1} name='$seg' parentPath='$parentDisplay' parentId=$currentParentId fullPath='/$currentPath'")
+                aapsLogger.info(LTag.CORE, "$LOG_PREFIX FOLDER_SEGMENT_CHECK level=${index + 1} name='$seg' parentPath='$parentDisplay' parentId=$currentParentId fullPath='/$currentPath'")
 
                 val existingId = findFolderIdByName(seg, currentParentId)
+                
                 val resolvedId = existingId ?: createFolder(seg, currentParentId) ?: run {
-                    gErr("FOLDER_SEGMENT_CREATE_FAIL name='$seg' parentPath='$parentDisplay' parentId=$currentParentId requested='/$currentPath'")
+                    aapsLogger.error(LTag.CORE, "$LOG_PREFIX FOLDER_SEGMENT_CREATE_FAIL name='$seg' parentPath='$parentDisplay' parentId=$currentParentId requested='/$currentPath'")
                     return@withContext null
                 }
 
                 if (existingId != null) {
-                    gLog("FOLDER_SEGMENT_EXIST level=${index + 1} name='$seg' id=$resolvedId fullPath='/$currentPath'")
+                    aapsLogger.info(LTag.CORE, "$LOG_PREFIX FOLDER_SEGMENT_EXIST level=${index + 1} name='$seg' id=$resolvedId fullPath='/$currentPath'")
                 } else {
-                    gLog("FOLDER_SEGMENT_CREATED level=${index + 1} name='$seg' id=$resolvedId fullPath='/$currentPath'")
+                    aapsLogger.info(LTag.CORE, "$LOG_PREFIX FOLDER_SEGMENT_CREATED level=${index + 1} name='$seg' id=$resolvedId fullPath='/$currentPath'")
                 }
 
                 pathCache[currentPath] = resolvedId
                 currentParentId = resolvedId
             }
 
-            gLog("FOLDER_PATH_READY path='$path' finalId=$currentParentId")
+            aapsLogger.info(LTag.CORE, "$LOG_PREFIX FOLDER_PATH_READY path='$path' finalId=$currentParentId")
             pathCache[trimmed] = currentParentId
             currentParentId
         } catch (e: Exception) {
@@ -1147,7 +1138,8 @@ class GoogleDriveManager @Inject constructor(
         try {
             val accessToken = getValidAccessToken() ?: return@withContext null
             val query = "mimeType='application/vnd.google-apps.folder' and name='$name' and '$parentId' in parents and trashed=false"
-            val url = "$DRIVE_API_URL/files?q=${Uri.encode(query)}&fields=files(id,name)&pageSize=1&supportsAllDrives=true&includeItemsFromAllDrives=true"
+            val encodedQuery = URLEncoder.encode(query, "UTF-8")
+            val url = "$DRIVE_API_URL/files?q=$encodedQuery&fields=files(id,name)&pageSize=1&supportsAllDrives=true&includeItemsFromAllDrives=true"
             val request = Request.Builder()
                 .url(url)
                 .header("Authorization", "Bearer $accessToken")
@@ -1170,20 +1162,19 @@ class GoogleDriveManager @Inject constructor(
     suspend fun uploadFileToPath(fileName: String, fileContent: ByteArray, mimeType: String, path: String): String? {
         return withContext(Dispatchers.IO) {
             try {
-                aapsLogger.error(LTag.CORE, "$LOG_PREFIX GDRIVE path $path")
+                aapsLogger.info(LTag.CORE, "$LOG_PREFIX UPLOAD_PATH_REQUESTED path='$path' file=$fileName size=${fileContent.size}")
                 val folderId = resolveFolderIdForUpload(path) ?: run {
                     aapsLogger.error(LTag.CORE, "$LOG_PREFIX Cannot resolve target path '$path'")
                     showConnectionError("Cannot create destination path")
                     return@withContext null
                 }
                 val accessToken = getValidAccessToken() ?: return@withContext null
-                aapsLogger.error(LTag.CORE, "$LOG_PREFIX UPLOAD_PATH_GOT_TOKEN")
                 try {
                     debugCurrentUser(accessToken)
                 } catch (e: Exception) {
-                    gErr("DEBUG_USER_FAILED (non-critical)", e)
+                    aapsLogger.error(LTag.CORE, "$LOG_PREFIX DEBUG_USER_FAILED (non-critical)", e)
                 }
-                gLog("UPLOAD_PATH_START pathHint='$path' folderId=$folderId file=$fileName size=${fileContent.size} mimeHint=$mimeType")
+                aapsLogger.info(LTag.CORE, "$LOG_PREFIX UPLOAD_PATH_START pathHint='$path' folderId=$folderId file=$fileName size=${fileContent.size} mimeHint=$mimeType")
 
                 val metadataJson = JSONObject().apply {
                     put("name", fileName)
@@ -1191,7 +1182,7 @@ class GoogleDriveManager @Inject constructor(
                 }.toString()
                 val metadataBody = metadataJson.toRequestBody("application/json; charset=UTF-8".toMediaType())
                 val effectiveMime = guessMimeType(fileName, mimeType)
-                if (effectiveMime != mimeType) gLog("MIME_ADJUST original=$mimeType effective=$effectiveMime file=$fileName")
+                if (effectiveMime != mimeType) aapsLogger.info(LTag.CORE, "$LOG_PREFIX MIME_ADJUST original=$mimeType effective=$effectiveMime file=$fileName")
                 val mediaBody = fileContent.toRequestBody(effectiveMime.toMediaType())
 
                 val multipart = MultipartBody.Builder()
@@ -1209,35 +1200,35 @@ class GoogleDriveManager @Inject constructor(
 
                 val response = client.newCall(request).execute()
                 val responseBodyStr = response.body?.string() ?: ""
-                gLog("UPLOAD_PATH_RESPONSE code=${response.code} message='${response.message}' hasBody=${responseBodyStr.isNotEmpty()} path='$path' file=$fileName")
-                if (responseBodyStr.isNotEmpty()) gLog("UPLOAD_PATH_RESPONSE_BODY ${responseBodyStr.take(500)}")
+                aapsLogger.info(LTag.CORE, "$LOG_PREFIX UPLOAD_PATH_RESPONSE code=${response.code} message='${response.message}' hasBody=${responseBodyStr.isNotEmpty()} path='$path' file=$fileName")
+                if (responseBodyStr.isNotEmpty()) aapsLogger.info(LTag.CORE, "$LOG_PREFIX UPLOAD_PATH_RESPONSE_BODY ${responseBodyStr.take(500)}")
                 if (response.isSuccessful) {
                     val jsonResponse = JSONObject(responseBodyStr.ifEmpty { "{}" })
                     val id = jsonResponse.optString("id").takeIf { it.isNotEmpty() }
                     if (id == null) {
-                        gErr("UPLOAD_PATH_NO_ID path='$path' file=$fileName rawBody='${responseBodyStr.take(200)}'")
+                        aapsLogger.error(LTag.CORE, "$LOG_PREFIX UPLOAD_PATH_NO_ID path='$path' file=$fileName rawBody='${responseBodyStr.take(200)}'")
                         showConnectionError("Upload succeeded but no id returned")
                         return@withContext null
                     }
                     val verified = verifyFileExists(id, accessToken)
                     return@withContext if (verified) {
                         clearConnectionError()
-                        gLog("UPLOAD_PATH_OK id=$id path='$path' file=$fileName")
+                        aapsLogger.info(LTag.CORE, "$LOG_PREFIX UPLOAD_PATH_OK id=$id path='$path' file=$fileName")
                         logFilePathChain(id, accessToken, "UPLOAD_PATH_OK_CHAIN")
                         debugListFolderSnapshot(folderId, accessToken, label = "AFTER_UPLOAD_PATH")
                         id
                     } else {
-                        gErr("UPLOAD_PATH_VERIFY_FAIL id=$id path='$path' file=$fileName")
+                        aapsLogger.error(LTag.CORE, "$LOG_PREFIX UPLOAD_PATH_VERIFY_FAIL id=$id path='$path' file=$fileName")
                         showConnectionError("Upload verification failed")
                         null
                     }
                 } else {
-                    gErr("UPLOAD_PATH_FAIL path='$path' code=${response.code} message='${response.message}' body=${responseBodyStr.take(300)}")
+                    aapsLogger.error(LTag.CORE, "$LOG_PREFIX UPLOAD_PATH_FAIL path='$path' code=${response.code} message='${response.message}' body=${responseBodyStr.take(300)}")
                     showConnectionError("Upload failed: ${response.code}")
                     null
                 }
             } catch (e: Exception) {
-                gErr("EXCEPTION uploadFileToPath path='$path' file=$fileName", e)
+                aapsLogger.error(LTag.CORE, "$LOG_PREFIX EXCEPTION uploadFileToPath path='$path' file=$fileName", e)
                 showConnectionError("Error uploading file: ${e.message}")
                 null
             }
@@ -1272,20 +1263,20 @@ class GoogleDriveManager @Inject constructor(
             client.newCall(req).execute().use { resp ->
                 val bodyStr = resp.body?.string() ?: ""
                 if (!resp.isSuccessful) {
-                    gErr("VERIFY_FAIL id=$fileId code=${resp.code} body='${bodyStr.take(300)}'")
+                    aapsLogger.error(LTag.CORE, "$LOG_PREFIX VERIFY_FAIL id=$fileId code=${resp.code} body='${bodyStr.take(300)}'")
                     return false
                 }
                 val json = JSONObject(bodyStr)
                 val trashed = json.optBoolean("trashed", false)
                 if (trashed) {
-                    gErr("VERIFY_FAIL_TRASHED id=$fileId json='${bodyStr.take(200)}'")
+                    aapsLogger.error(LTag.CORE, "$LOG_PREFIX VERIFY_FAIL_TRASHED id=$fileId json='${bodyStr.take(200)}'")
                     return false
                 }
-                gLog("VERIFY_OK id=$fileId name=${json.optString("name")} parents=${json.optJSONArray("parents")?.toString() ?: "[]"} mime=${json.optString("mimeType")} size=${json.optLong("size", -1)} webViewLink=${json.optString("webViewLink")} created=${json.optString("createdTime")} modified=${json.optString("modifiedTime")}")
+                aapsLogger.info(LTag.CORE, "$LOG_PREFIX VERIFY_OK id=$fileId name=${json.optString("name")} parents=${json.optJSONArray("parents")?.toString() ?: "[]"} mime=${json.optString("mimeType")} size=${json.optLong("size", -1)} webViewLink=${json.optString("webViewLink")} created=${json.optString("createdTime")} modified=${json.optString("modifiedTime")}")
                 true
             }
         } catch (e: Exception) {
-            gErr("VERIFY_EXCEPTION id=$fileId", e)
+            aapsLogger.error(LTag.CORE, "$LOG_PREFIX VERIFY_EXCEPTION id=$fileId", e)
             false
         }
     }
@@ -1300,14 +1291,14 @@ class GoogleDriveManager @Inject constructor(
                 val body = resp.body?.string() ?: ""
                 if (resp.isSuccessful) {
                     runCatching { JSONObject(body).optJSONObject("user") }.getOrNull()?.let { u ->
-                        gLog("USER email=${u.optString("emailAddress")} display=${u.optString("displayName")}")
+                        aapsLogger.info(LTag.CORE, "$LOG_PREFIX USER email=${u.optString("emailAddress")} display=${u.optString("displayName")}")
                     }
                 } else {
-                    gLog("USER_FAIL code=${resp.code}")
+                    aapsLogger.info(LTag.CORE, "$LOG_PREFIX USER_FAIL code=${resp.code}")
                 }
             }
         } catch (e: Exception) {
-            gErr("USER_EXCEPTION", e)
+            aapsLogger.error(LTag.CORE, "$LOG_PREFIX USER_EXCEPTION", e)
         }
     }
 
@@ -1319,7 +1310,7 @@ class GoogleDriveManager @Inject constructor(
             client.newCall(req).execute().use { resp ->
                 val body = resp.body?.string() ?: ""
                 if (!resp.isSuccessful) {
-                    gErr("FOLDER_LIST_FAIL folderId=$folderId code=${resp.code}")
+                    aapsLogger.debug(LTag.CORE, "$LOG_PREFIX FOLDER_LIST_FAIL_DEBUG (non-critical) folderId=$folderId code=${resp.code}")
                     return
                 }
                 val json = JSONObject(body)
@@ -1329,10 +1320,10 @@ class GoogleDriveManager @Inject constructor(
                     val f = arr.getJSONObject(i)
                     summary.append(f.optString("name")).append('(').append(f.optString("id")).append(") ")
                 }
-                gLog("FOLDER_SNAPSHOT label=$label folderId=$folderId items=${arr.length()} list='${summary.toString().trim()}'")
+                aapsLogger.info(LTag.CORE, "$LOG_PREFIX FOLDER_SNAPSHOT label=$label folderId=$folderId items=${arr.length()} list='${summary.toString().trim()}'")
             }
         } catch (e: Exception) {
-            gErr("FOLDER_SNAPSHOT_EXCEPTION folderId=$folderId", e)
+            aapsLogger.debug(LTag.CORE, "$LOG_PREFIX FOLDER_SNAPSHOT_EXCEPTION (non-critical) folderId=$folderId: ${e.message}")
         }
     }
 
@@ -1351,7 +1342,7 @@ class GoogleDriveManager @Inject constructor(
                 client.newCall(req).execute().use { resp ->
                     val body = resp.body?.string() ?: ""
                     if (!resp.isSuccessful) {
-                        gErr("PATH_CHAIN_FAIL id=$currentId code=${resp.code} partial='${chain.joinToString("/")}'")
+                        aapsLogger.debug(LTag.CORE, "$LOG_PREFIX PATH_CHAIN_FAIL_DEBUG (non-critical) id=$currentId code=${resp.code} partial='${chain.joinToString("/")}'")
                         abort = true
                     }
                     if (!abort) {
@@ -1368,9 +1359,9 @@ class GoogleDriveManager @Inject constructor(
                 if (reachedRoot) break
             }
             val status = if (reachedRoot) "COMPLETE" else if (abort) "ABORT" else "PARTIAL"
-            gLog("$tag status=$status chain='${chain.joinToString("/")}' depth=${chain.size}")
+            aapsLogger.info(LTag.CORE, "$LOG_PREFIX $tag status=$status chain='${chain.joinToString("/")}' depth=${chain.size}")
         } catch (e: Exception) {
-            gErr("PATH_CHAIN_EXCEPTION fileId=$fileId", e)
+            aapsLogger.debug(LTag.CORE, "$LOG_PREFIX PATH_CHAIN_EXCEPTION (non-critical) fileId=$fileId: ${e.message}")
         }
     }
 }
