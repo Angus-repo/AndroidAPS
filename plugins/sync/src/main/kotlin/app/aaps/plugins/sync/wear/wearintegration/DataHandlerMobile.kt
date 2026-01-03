@@ -41,7 +41,6 @@ import app.aaps.core.interfaces.profile.ProfileFunction
 import app.aaps.core.interfaces.profile.ProfileUtil
 import app.aaps.core.interfaces.pump.DetailedBolusInfo
 import app.aaps.core.interfaces.pump.PumpStatusProvider
-import app.aaps.core.interfaces.pump.PumpSync
 import app.aaps.core.interfaces.pump.defs.determineCorrectBolusStepSize
 import app.aaps.core.interfaces.queue.Callback
 import app.aaps.core.interfaces.queue.CommandQueue
@@ -431,6 +430,9 @@ class DataHandlerMobile @Inject constructor(
                            handleGetCustomWatchface(it)
                        }, fabricPrivacy::logException)
     }
+    private fun maxOfNullable(vararg values: Long?): Long? {
+        return values.filterNotNull().maxOrNull()
+    }
 
     private fun buildLoopStatusData(): LoopStatusData {
         val tempTarget = persistenceLayer.getTemporaryTargetActiveAt(dateUtil.now())
@@ -441,17 +443,31 @@ class DataHandlerMobile @Inject constructor(
         val (lastRunTimestamp, lastEnactTimestamp, apsResult) = if (config.APS) {
             // AAPS - use local loop data
             val lastRun = loop.lastRun
+
+            // For enacted timestamp, use the LATEST of TBR or SMB
+            val lastTbrEnact = lastRun?.lastTBREnact?.takeIf { it != 0L }
+            val lastSmbEnact = lastRun?.lastSMBEnact?.takeIf { it != 0L }
+            val lastEnact = maxOfNullable(lastTbrEnact, lastSmbEnact)
+
             Triple(
                 lastRun?.lastAPSRun,
-                lastRun?.lastTBREnact?.takeIf { it != 0L },
+                lastEnact,
                 lastRun?.constraintsProcessed
             )
         } else {
             // AAPSClient - use data from NS/device status
             val apsData = processedDeviceStatusData.openAPSData
+
+            // Use clockEnacted only if it's within 30s of clockSuggested or newer
+            val timeWindowMs = 30_000L
+            val apsDataLastEnact = if (apsData.clockEnacted >= apsData.clockSuggested - timeWindowMs) {
+                apsData.clockEnacted
+            } else {
+                null
+            }
             Triple(
                 apsData.clockSuggested,
-                null, //apsData.clockEnacted not reliable
+                apsDataLastEnact,
                 processedDeviceStatusData.getAPSResult()
             )
         }

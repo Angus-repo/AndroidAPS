@@ -58,7 +58,7 @@
     <!-- wizard-->
     <string name="retry">Réessayer</string>
     <string name="next">Suivant</string>
-    <string name="discard">Retirer</string>
+    <string name="discard">Supprimer</string>
     <string name="step_prepare_patch">Activer le Patch</string>
     <string name="step_prepare_patch_connect">Connecter et remplir</string>
     <string name="step_prime">Amorcer</string>

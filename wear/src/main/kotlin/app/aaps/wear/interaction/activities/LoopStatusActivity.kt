@@ -243,12 +243,17 @@ class LoopStatusActivity : AppCompatActivity() {
                 val enactTimeString = dateUtil.timeString(lastEnact)
                 val enactAgeMs = System.currentTimeMillis() - lastEnact
 
-                // Compare only HH:mm part of times
-                if (runTimeString == enactTimeString) {
-                    // Show combined row
+                val timeWindowMs = 30_000L // 30 seconds
+
+                // Check if enacted is within 30 seconds of suggested (before or after)
+                val timeDiff = kotlin.math.abs(lastRun - lastEnact)
+                val timesAreClose = timeDiff <= timeWindowMs
+
+                if (timesAreClose) {
+                    // Show combined row - use the enacted time since it's the actual action
                     lastRunEnactCombinedRow.visibility = View.VISIBLE
-                    lastRunEnactCombinedValue.text = runTimeString
-                    lastRunEnactCombinedValue.setTextColor(runColor)
+                    lastRunEnactCombinedValue.text = enactTimeString
+                    lastRunEnactCombinedValue.setTextColor(ContextCompat.getColor(this, getAgeColorRes(enactAgeMs)))
 
                     // Hide separate rows
                     lastRunRow.visibility = View.GONE
