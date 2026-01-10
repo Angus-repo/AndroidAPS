@@ -207,7 +207,7 @@
     <string name="local_storage_option">Local Storage</string>
     <string name="cloud_storage_option">Cloud Storage</string>
     <string name="export_all_cloud">All Cloud</string>
-    <string name="send_logs_to_cloud">Save Logs to Cloud</string>
+    <string name="send_logs_to_cloud">Export Logs to Cloud</string>
     <string name="export_csv_to_cloud">Export User Entries to Cloud (csv)</string>
     <string name="export_csv_to_local">Export User Entries to Local (csv)</string>
     <string name="export_settings_local">Export settings (Local)</string>
