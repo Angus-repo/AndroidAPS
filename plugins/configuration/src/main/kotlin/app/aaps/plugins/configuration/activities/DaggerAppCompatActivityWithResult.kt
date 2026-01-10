@@ -22,6 +22,7 @@ import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.ui.locale.LocaleHelper
 import app.aaps.core.ui.toast.ToastUtils
 import app.aaps.plugins.configuration.maintenance.CustomWatchfaceFileContract
+import app.aaps.plugins.configuration.maintenance.cloud.CloudConstants
 import app.aaps.plugins.configuration.maintenance.PrefsFileContract
 import dagger.android.support.DaggerAppCompatActivity
 import io.reactivex.rxjava3.disposables.CompositeDisposable
@@ -105,6 +106,15 @@ open class DaggerAppCompatActivityWithResult : DaggerAppCompatActivity() {
 
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(LocaleHelper.wrap(newBase))
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        
+        // Handle cloud import result
+        if (requestCode == CloudConstants.CLOUD_IMPORT_REQUEST_CODE && resultCode == RESULT_OK) {
+            importExportPrefs.doImportSharedPreferences(this)
+        }
     }
 
     // Used for SetupWizardActivity
