@@ -292,46 +292,6 @@
     <string name="cloud_authorization_message">%1$s 授權頁面已在您的瀏覽器中開啟。\n\n請完成授權後返回此應用程式。\n\n授權完成後，此對話框將自動關閉。</string>
     <string name="cloud_auth_start_failed">無法開始授權</string>
     <string name="cloud_auth_cancelled">授權已取消</string>
-    <!-- Authorization status strings -->
-    <string name="authorization_status">授權狀態</string>
-    <string name="google_drive_authorized">已授權 Google 雲端硬碟</string>
-    <string name="google_drive_reauth_required">請清除設定後重新授權 Google 雲端硬碟</string>
-    
-    <!-- Google Drive error messages -->
-    <string name="google_drive_account_not_linked">Google 雲端硬碟帳號未連結</string>
-    <string name="google_drive_token_refresh_failed">無法更新 Google 雲端硬碟存取權杖</string>
-    <string name="google_drive_token_refresh_error">無法更新 Google 雲端硬碟存取權杖：%1$s</string>
-    <string name="google_drive_no_valid_token">無法取得有效的存取權杖</string>
-    <string name="google_drive_connection_test_failed">Google 雲端硬碟連線測試失敗</string>
-    <string name="google_drive_connect_error">無法連線到 Google 雲端硬碟：%1$s</string>
-    <string name="google_drive_list_folders_failed">無法列出 Google 雲端硬碟資料夾</string>
-    <string name="google_drive_list_folders_error">列出資料夾時發生錯誤：%1$s</string>
-    <string name="google_drive_upload_no_id">上傳成功但未返回檔案 ID</string>
-    <string name="google_drive_upload_verify_failed">上傳驗證失敗</string>
-    <string name="google_drive_upload_failed">上傳失敗：%1$s</string>
-    <string name="google_drive_upload_error">上傳檔案時發生錯誤：%1$s</string>
-    <string name="google_drive_folder_access_error">無法建立或存取目標資料夾：%1$s</string>
-    <string name="google_drive_list_settings_failed">無法列出設定檔案</string>
-    <string name="google_drive_list_settings_error">列出設定檔案時發生錯誤：%1$s</string>
-    <string name="google_drive_download_failed">下載檔案失敗</string>
-    <string name="google_drive_download_error">下載檔案時發生錯誤：%1$s</string>
-    
-    <!-- Provider-agnostic cloud storage strings -->
-    <string name="exported_to_cloud">設定已成功匯出至雲端儲存</string>
-    <string name="export_to_cloud_failed">匯出至雲端儲存失敗</string>
-    <string name="cloud_connection_failed">雲端儲存連線失敗</string>
-    <string name="loading_from_cloud">正在從雲端儲存載入設定，請稍候…</string>
-    <string name="cloud_folder_error">載入雲端儲存資料夾失敗</string>
-    <string name="csv_uploaded_to_cloud">使用者項目 CSV 已成功上傳至雲端儲存</string>
-    <string name="cloud_reauthorize_message">雲端儲存連線失敗。您要重新驗證嗎？</string>
-    <string name="logs_uploaded_to_cloud">日誌已成功上傳至雲端儲存</string>
-    <string name="cloud_auth_success">雲端儲存驗證成功</string>
-    <string name="cloud_auth_failed">雲端儲存驗證失敗</string>
-    <string name="cloud_auth_error">雲端儲存驗證錯誤：%1$s</string>
-    <string name="cloud_authorization_title">%1$s 授權</string>
-    <string name="cloud_authorization_message">%1$s 授權頁面已在您的瀏覽器中開啟。\n\n請完成授權後返回此應用程式。\n\n授權完成後，此對話框將自動關閉。</string>
-    <string name="cloud_auth_start_failed">無法開始授權</string>
-    <string name="cloud_auth_cancelled">授權已取消</string>
     <string name="cloud_auth_timeout">授權逾時，請重試</string>
     <string name="cloud_token_expired_or_invalid">雲端儲存授權已過期或失效。請重新授權。</string>
 </resources>
