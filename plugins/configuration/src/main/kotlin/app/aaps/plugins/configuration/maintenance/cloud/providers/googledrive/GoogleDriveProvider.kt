@@ -49,6 +49,10 @@ class GoogleDriveProvider @Inject constructor(
 
     override val iconResId: Int = R.drawable.ic_google_drive
 
+    override val authorizedTextResId: Int = R.string.google_drive_authorized
+
+    override val reAuthRequiredTextResId: Int = R.string.google_drive_reauth_required
+
     // ==================== Authentication ====================
 
     override suspend fun startAuth(): String? {

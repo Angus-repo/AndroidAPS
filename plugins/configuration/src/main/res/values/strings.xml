@@ -229,7 +229,7 @@
     <string name="export_options_updated">Export options updated</string>
     <string name="import_from_cloud">Import settings from cloud</string>
     <string name="no_settings_files_found">No settings files found in cloud storage</string>
-    <string name="clear_action">Clear</string>
+    <string name="clear_action">Clear Settings</string>
     <string name="clear_cloud_settings">Clear Cloud Settings</string>
     <string name="clear_cloud_settings_message">This will switch to local storage and clear authorization. Continue?</string>
     <string name="uploading_to_cloud">Uploading to cloud...</string>
@@ -259,4 +259,9 @@
     <string name="cloud_auth_cancelled">Authorization cancelled</string>
     <string name="cloud_auth_timeout">Authorization timed out, please retry</string>
     <string name="cloud_token_expired_or_invalid">Cloud storage authorization has expired or is invalid. Please re-authorize.</string>
+    
+    <!-- Authorization status strings -->
+    <string name="authorization_status">Authorization Status</string>
+    <string name="google_drive_authorized">Google Drive Authorized</string>
+    <string name="google_drive_reauth_required">Please clear settings and re-authorize Google Drive</string>
 </resources>

@@ -10,9 +10,10 @@ object CloudConstants {
     const val LOG_PREFIX = "[Cloud]"
     
     // Cloud storage paths - these are logical paths that providers should map to their structure
-    const val CLOUD_PATH_SETTINGS = "AAPS/export/preferences"
-    const val CLOUD_PATH_LOGS = "AAPS/export/logs"
-    const val CLOUD_PATH_USER_ENTRIES = "AAPS/export/user_entries"
+    const val CLOUD_PATH_EXPORT = "/AAPS/export"
+    const val CLOUD_PATH_SETTINGS = "${CLOUD_PATH_EXPORT}/preferences"
+    const val CLOUD_PATH_LOGS = "${CLOUD_PATH_EXPORT}/logs"
+    const val CLOUD_PATH_USER_ENTRIES = "${CLOUD_PATH_EXPORT}/user_entries"
     
     // Activity request codes
     const val CLOUD_IMPORT_REQUEST_CODE = 1001

@@ -1,6 +1,8 @@
 package app.aaps.plugins.configuration.maintenance.cloud
 
 import android.content.Intent
+import android.view.View
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.TextView
@@ -58,18 +60,30 @@ class CloudDirectoryDialog @Inject constructor(
         val googleDriveRadio = dialogView.findViewById<RadioButton>(R.id.google_drive_radio)
         val clearAction = dialogView.findViewById<TextView>(R.id.clear_action)
         
+        // Authorization status section UI elements
+        val authStatusSection = dialogView.findViewById<LinearLayout>(R.id.authorization_status_section)
+        val authStatusText = dialogView.findViewById<TextView>(R.id.authorization_status_text)
+        val authCheckIcon = dialogView.findViewById<ImageView>(R.id.authorization_check_icon)
+        val cloudPathText = dialogView.findViewById<TextView>(R.id.cloud_path_text)
+        
         val currentType = cloudStorageManager.getActiveStorageType()
         val isCloudSelected = currentType == StorageTypes.GOOGLE_DRIVE
 
         // Initial state: set radio button based on current settings
         googleDriveRadio.isChecked = isCloudSelected
+        
+        // Update authorization status section
+        updateAuthorizationStatusSection(
+            activity,
+            authStatusSection,
+            authStatusText,
+            authCheckIcon,
+            cloudPathText
+        )
 
         // Use MaterialAlertDialogBuilder with DialogTheme to match project style
+        // Title is now in the layout itself, so we don't use setCustomTitle
         val dialog = MaterialAlertDialogBuilder(activity, app.aaps.core.ui.R.style.DialogTheme)
-            .setCustomTitle(AlertDialogHelper.buildCustomTitle(
-                activity, 
-                rh.gs(R.string.select_storage_type)
-            ))
             .setView(dialogView)
             .setNegativeButton(rh.gs(app.aaps.core.ui.R.string.cancel), null)
             .create()
@@ -315,5 +329,45 @@ class CloudDirectoryDialog @Inject constructor(
             }
             .setNegativeButton(rh.gs(app.aaps.core.ui.R.string.cancel), null)
             .show()
+    }
+    
+    /**
+     * Update authorization status section based on current cloud storage state
+     */
+    private fun updateAuthorizationStatusSection(
+        activity: DaggerAppCompatActivityWithResult,
+        authStatusSection: LinearLayout,
+        authStatusText: TextView,
+        authCheckIcon: ImageView,
+        cloudPathText: TextView
+    ) {
+        val provider = cloudStorageManager.getProvider(StorageTypes.GOOGLE_DRIVE)
+        val hasCredentials = provider?.hasValidCredentials() == true
+        val hasConnectionError = cloudStorageManager.hasConnectionError()
+        
+        if (hasCredentials && provider != null) {
+            // Show authorization status section
+            authStatusSection.visibility = View.VISIBLE
+            
+            if (hasConnectionError) {
+                // Need re-authorization - use provider's resource ID
+                authStatusText.text = rh.gs(provider.reAuthRequiredTextResId)
+                authStatusText.setTextColor(activity.getColor(R.color.cloud_status_warning))
+                authCheckIcon.setImageResource(R.drawable.ic_error)
+                authCheckIcon.setColorFilter(activity.getColor(R.color.cloud_status_warning))
+            } else {
+                // Authorized successfully - use provider's resource ID
+                authStatusText.text = rh.gs(provider.authorizedTextResId)
+                authStatusText.setTextColor(activity.getColor(R.color.cloud_status_success))
+                authCheckIcon.setImageResource(R.drawable.ic_meta_ok)
+                authCheckIcon.setColorFilter(activity.getColor(R.color.cloud_status_success))
+            }
+            
+            // Set cloud path
+            cloudPathText.text = CloudConstants.CLOUD_PATH_EXPORT
+        } else {
+            // Hide authorization status section if no credentials
+            authStatusSection.visibility = View.GONE
+        }
     }
 }

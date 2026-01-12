@@ -6,16 +6,35 @@
     android:orientation="vertical"
     android:padding="16dp">
 
-    <!-- Clear action button at top right -->
-    <TextView
-        android:id="@+id/clear_action"
+    <!-- Title row with clear action -->
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:gravity="end"
-        android:text="@string/clear_action"
-        android:textStyle="bold"
-        android:textColor="?attr/colorPrimary"
-        android:paddingBottom="8dp" />
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingBottom="12dp">
+
+        <TextView
+            android:id="@+id/dialog_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/select_storage_type"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary" />
+
+        <TextView
+            android:id="@+id/clear_action"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/clear_action"
+            android:textStyle="bold"
+            android:textColor="?attr/colorPrimary"
+            android:background="?android:attr/selectableItemBackground"
+            android:padding="8dp" />
+
+    </LinearLayout>
 
     <!-- Google Drive storage option - matching ConfigBuilder style -->
         <LinearLayout
@@ -82,5 +101,97 @@
         android:layout_marginBottom="8dp"
         android:alpha="0.5"
         android:background="?android:attr/listDivider" />
+
+    <!-- Authorization Status Section -->
+    <LinearLayout
+        android:id="@+id/authorization_status_section"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <!-- Authorization Status Header -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="8dp">
+
+            <ImageView
+                android:id="@+id/authorization_status_icon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/ic_cloud_upload"
+                app:tint="?attr/colorPrimary"
+                android:contentDescription="@string/authorization_status" />
+
+            <TextView
+                android:id="@+id/authorization_status_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/authorization_status"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+        </LinearLayout>
+
+        <!-- Authorization Status Text -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginStart="28dp">
+
+            <ImageView
+                android:id="@+id/authorization_check_icon"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/ic_meta_ok"
+                app:tint="@color/cloud_status_success"
+                android:contentDescription="@string/google_drive_authorized" />
+
+            <TextView
+                android:id="@+id/authorization_status_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/google_drive_authorized"
+                android:textSize="14sp"
+                android:textColor="@color/cloud_status_success" />
+
+        </LinearLayout>
+
+        <!-- Cloud Directory Path -->
+        <LinearLayout
+            android:id="@+id/cloud_path_section"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp"
+            android:layout_marginStart="28dp">
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginEnd="8dp"
+                android:src="@drawable/ic_directory"
+                app:tint="?android:attr/textColorSecondary"
+                android:contentDescription="@string/cloud_directory" />
+
+            <TextView
+                android:id="@+id/cloud_path_text"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="/AAPS/export"
+                android:textSize="12sp"
+                android:textColor="?android:attr/textColorSecondary" />
+
+        </LinearLayout>
+
+    </LinearLayout>
 
 </LinearLayout>

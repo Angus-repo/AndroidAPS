@@ -28,6 +28,16 @@ interface CloudStorageProvider {
      */
     val iconResId: Int
     
+    /**
+     * String resource ID for "authorized" status text (e.g., "Google Drive Authorized")
+     */
+    val authorizedTextResId: Int
+    
+    /**
+     * String resource ID for "re-authorization required" status text
+     */
+    val reAuthRequiredTextResId: Int
+    
     // ==================== Authentication ====================
     
     /**
