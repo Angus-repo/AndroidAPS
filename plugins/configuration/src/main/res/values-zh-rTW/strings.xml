@@ -296,7 +296,6 @@
     <string name="authorization_status">授權狀態</string>
     <string name="google_drive_authorized">已授權 Google 雲端硬碟</string>
     <string name="google_drive_reauth_required">請清除設定後重新授權 Google 雲端硬碟</string>
-    <string name="clear_action">清除設定</string>
     
     <!-- Export options -->
     <string name="export_options">匯出選項</string>
