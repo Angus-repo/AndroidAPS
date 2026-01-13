@@ -194,7 +194,7 @@
     <string name="cloud_auth_failed">Cloud storage authentication failed</string>
     <string name="cloud_auth_error">Cloud storage authentication error: %1$s</string>
     <string name="enable_cloud_export_title">Enable Cloud Export</string>
-    <string name="enable_cloud_export_message">Would you like to change export destination to cloud? This will enable \"All Cloud\" option in Export Settings.</string>
+    <string name="enable_cloud_export_message">Would you like to enable cloud export? This will enable the \"All Cloud\" option in Export Settings.</string>
     <string name="can_change_in_export_settings">You can modify this later in Export Settings</string>
     <string name="setup_cloud_directory_first">Please set up Cloud Directory first to use Export Settings</string>
     <string name="local_directory">LOCAL Directory</string>
@@ -212,8 +212,17 @@
     <string name="export_csv_to_local">Export User Entries to Local (csv)</string>
     <string name="export_settings_local">Export settings (Local)</string>
     <string name="export_settings_cloud">Export settings (Cloud)</string>
+    <string name="export_settings_both">Export settings (Local+Cloud)</string>
     <string name="import_settings_local">Import settings (Local)</string>
     <string name="import_settings_cloud">Import settings (Cloud)</string>
+    <string name="import_settings_both">Import settings (Local/Cloud)</string>
+    
+    <!-- Import source selection dialog -->
+    <string name="select_import_source">Select Import Source</string>
+    <string name="import_from_local">Import from Local Storage</string>
+    <string name="import_from_cloud">Import from Cloud Storage</string>
+    <string name="import_source_local_description">Import settings from device storage</string>
+    <string name="import_source_cloud_description">Import settings from cloud storage</string>
     <string name="cloud_import_file_count">Showing %1$d of %2$d files</string>
     <string name="cloud_import_file_count_all">Showing all %1$d files</string>
     <string name="load_more">Load More</string>
@@ -227,7 +236,6 @@
     <string name="csv_upload_failed">Failed to upload User Entries CSV to cloud storage</string>
     <string name="csv_upload_error">Error occurred while uploading CSV to cloud</string>
     <string name="export_options_updated">Export options updated</string>
-    <string name="import_from_cloud">Import settings from cloud</string>
     <string name="no_settings_files_found">No settings files found in cloud storage</string>
     <string name="clear_action">Clear Settings</string>
     <string name="clear_cloud_settings">Clear Cloud Settings</string>

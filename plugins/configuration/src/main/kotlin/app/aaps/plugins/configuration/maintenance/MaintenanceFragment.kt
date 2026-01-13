@@ -313,31 +313,44 @@ class MaintenanceFragment : DaggerFragment() {
      * Update dynamic button text based on export destination settings
      */
     private fun updateDynamicButtonText() {
-        // Check if log should be sent to cloud
-        val isLogCloudEnabled = exportOptionsDialog.isAllCloudEnabled() || exportOptionsDialog.isLogCloudEnabled()
-        if (isLogCloudEnabled) {
-            binding.logSend.text = rh.gs(R.string.send_logs_to_cloud)
-        } else {
-            binding.logSend.text = rh.gs(R.string.send_all_logs)
-        }
+        val isAllCloud = exportOptionsDialog.isAllCloudEnabled()
+        val isCloudActive = cloudStorageManager.isCloudStorageActive()
         
-        // Check if CSV should be exported to cloud or local
-        val isCsvCloudEnabled = exportOptionsDialog.isAllCloudEnabled() || exportOptionsDialog.isCsvCloudEnabled()
-        if (isCsvCloudEnabled) {
-            binding.exportCsv.text = rh.gs(R.string.export_csv_to_cloud)
-        } else {
-            binding.exportCsv.text = rh.gs(R.string.export_csv_to_local)
-        }
+        // Log button text
+        val isLogCloud = isAllCloud || exportOptionsDialog.isLogCloudEnabled()
+        binding.logSend.text = rh.gs(
+            if (isLogCloud) R.string.send_logs_to_cloud else R.string.send_all_logs
+        )
         
-        // Check if settings should be exported/imported to cloud or local
-        val isSettingsCloudEnabled = exportOptionsDialog.isAllCloudEnabled() || exportOptionsDialog.isSettingsCloudEnabled()
-        if (isSettingsCloudEnabled) {
-            binding.navExport.text = rh.gs(R.string.export_settings_cloud)
-            binding.navImport.text = rh.gs(R.string.import_settings_cloud)
-        } else {
-            binding.navExport.text = rh.gs(R.string.export_settings_local)
-            binding.navImport.text = rh.gs(R.string.import_settings_local)
-        }
+        // CSV button text
+        val isCsvCloud = isAllCloud || exportOptionsDialog.isCsvCloudEnabled()
+        binding.exportCsv.text = rh.gs(
+            if (isCsvCloud) R.string.export_csv_to_cloud else R.string.export_csv_to_local
+        )
+        
+        // Settings export/import destinations
+        val isSettingsLocal = exportOptionsDialog.isSettingsLocalEnabled()
+        val isSettingsCloud = exportOptionsDialog.isSettingsCloudEnabled()
+        val bothEnabled = isSettingsLocal && isSettingsCloud && isCloudActive
+        val cloudOnly = isSettingsCloud && isCloudActive && !isSettingsLocal
+        
+        // Export button text
+        binding.navExport.text = rh.gs(
+            when {
+                bothEnabled -> R.string.export_settings_both
+                cloudOnly -> R.string.export_settings_cloud
+                else -> R.string.export_settings_local
+            }
+        )
+        
+        // Import button text
+        binding.navImport.text = rh.gs(
+            when {
+                bothEnabled -> R.string.import_settings_both
+                cloudOnly -> R.string.import_settings_cloud
+                else -> R.string.import_settings_local
+            }
+        )
     }
 
     private fun queryProtection() {

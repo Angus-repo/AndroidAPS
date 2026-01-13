@@ -1,6 +1,7 @@
 package app.aaps.plugins.configuration.maintenance.cloud
 
 import android.content.Context
+import android.widget.CheckBox
 import android.widget.Switch
 import androidx.appcompat.app.AlertDialog
 import androidx.fragment.app.FragmentActivity
@@ -47,8 +48,8 @@ class ExportOptionsDialog @Inject constructor(
         val allCloudSwitch = dialogView.findViewById<Switch>(R.id.all_cloud_switch)
         val logEmailSwitch = dialogView.findViewById<Switch>(R.id.log_email_switch)
         val logCloudSwitch = dialogView.findViewById<Switch>(R.id.log_cloud_switch)
-        val settingsLocalSwitch = dialogView.findViewById<Switch>(R.id.settings_local_switch)
-        val settingsCloudSwitch = dialogView.findViewById<Switch>(R.id.settings_cloud_switch)
+        val settingsLocalCheckbox = dialogView.findViewById<CheckBox>(R.id.settings_local_checkbox)
+        val settingsCloudCheckbox = dialogView.findViewById<CheckBox>(R.id.settings_cloud_checkbox)
         val csvLocalSwitch = dialogView.findViewById<Switch>(R.id.csv_local_switch)
         val csvCloudSwitch = dialogView.findViewById<Switch>(R.id.csv_cloud_switch)
         
@@ -56,8 +57,8 @@ class ExportOptionsDialog @Inject constructor(
         allCloudSwitch.isChecked = sp.getBoolean(PREF_ALL_CLOUD_ENABLED, false)
         logEmailSwitch.isChecked = sp.getBoolean(PREF_LOG_EMAIL_ENABLED, true) // Default to email
         logCloudSwitch.isChecked = sp.getBoolean(PREF_LOG_CLOUD_ENABLED, false)
-        settingsLocalSwitch.isChecked = sp.getBoolean(PREF_SETTINGS_LOCAL_ENABLED, true) // Default to local
-        settingsCloudSwitch.isChecked = sp.getBoolean(PREF_SETTINGS_CLOUD_ENABLED, false)
+        settingsLocalCheckbox.isChecked = sp.getBoolean(PREF_SETTINGS_LOCAL_ENABLED, true) // Default to local
+        settingsCloudCheckbox.isChecked = sp.getBoolean(PREF_SETTINGS_CLOUD_ENABLED, false)
         csvLocalSwitch.isChecked = sp.getBoolean(PREF_CSV_LOCAL_ENABLED, true) // Default to local
         csvCloudSwitch.isChecked = sp.getBoolean(PREF_CSV_CLOUD_ENABLED, false)
         
@@ -67,66 +68,48 @@ class ExportOptionsDialog @Inject constructor(
         // Disable cloud options if not configured
         if (!isCloudConfigured) {
             logCloudSwitch.isEnabled = false
-            settingsCloudSwitch.isEnabled = false
+            settingsCloudCheckbox.isEnabled = false
             csvCloudSwitch.isEnabled = false
             
             // Force disable cloud options and enable local/email options
             logCloudSwitch.isChecked = false
-            settingsCloudSwitch.isChecked = false
+            settingsCloudCheckbox.isChecked = false
             csvCloudSwitch.isChecked = false
             
             if (!logEmailSwitch.isChecked && !logCloudSwitch.isChecked) {
                 logEmailSwitch.isChecked = true
             }
-            if (!settingsLocalSwitch.isChecked && !settingsCloudSwitch.isChecked) {
-                settingsLocalSwitch.isChecked = true
+            if (!settingsLocalCheckbox.isChecked && !settingsCloudCheckbox.isChecked) {
+                settingsLocalCheckbox.isChecked = true
             }
             if (!csvLocalSwitch.isChecked && !csvCloudSwitch.isChecked) {
                 csvLocalSwitch.isChecked = true
             }
         }
         
-        // Apply master All-Cloud behavior - for initialization (BEFORE setting up listeners)
-        // This ensures the UI reflects the correct state before any listener is attached
-        if (allCloudSwitch.isChecked && isCloudConfigured) {
-            // When All-Cloud is enabled, ensure all cloud options are checked
-            logCloudSwitch.isChecked = true
-            settingsCloudSwitch.isChecked = true
-            csvCloudSwitch.isChecked = true
-            logEmailSwitch.isChecked = false
-            settingsLocalSwitch.isChecked = false
-            csvLocalSwitch.isChecked = false
-            
-            // Disable per-row toggles when master is on
-            logEmailSwitch.isEnabled = false
-            logCloudSwitch.isEnabled = false
-            settingsLocalSwitch.isEnabled = false
-            settingsCloudSwitch.isEnabled = false
-            csvLocalSwitch.isEnabled = false
-            csvCloudSwitch.isEnabled = false
-        }
-        
-        // Set up mutual exclusivity for each row (AFTER initial state is set)
+        // Set up mutual exclusivity for log and csv rows (they still use switches)
         setupMutualExclusivity(logEmailSwitch, logCloudSwitch)
-        setupMutualExclusivity(settingsLocalSwitch, settingsCloudSwitch)
         setupMutualExclusivity(csvLocalSwitch, csvCloudSwitch)
         
-        // Apply master All-Cloud behavior - for user interaction (sets values)
+        // Set up at-least-one-selected logic for settings checkboxes
+        setupAtLeastOneSelected(settingsLocalCheckbox, settingsCloudCheckbox)
+        
+        // Apply master All-Cloud behavior - shared logic for both initialization and user interaction
         val applyAllCloudState: (Boolean) -> Unit = { enabled ->
             if (enabled) {
-                // Require cloud for all rows
+                // Require cloud for all rows, but preserve local settings checkbox state
                 logCloudSwitch.isChecked = true
-                settingsCloudSwitch.isChecked = true
+                settingsCloudCheckbox.isChecked = true
                 csvCloudSwitch.isChecked = true
                 logEmailSwitch.isChecked = false
-                settingsLocalSwitch.isChecked = false
+                // settingsLocalCheckbox - keep current state, don't force uncheck
                 csvLocalSwitch.isChecked = false
 
-                // Disable per-row toggles when master is on
+                // Disable per-row toggles when master is on (except settings local which can be toggled)
                 logEmailSwitch.isEnabled = false
                 logCloudSwitch.isEnabled = false
-                settingsLocalSwitch.isEnabled = false
-                settingsCloudSwitch.isEnabled = false
+                // settingsLocalCheckbox stays enabled - user can choose to have both local+cloud
+                settingsCloudCheckbox.isEnabled = false
                 csvLocalSwitch.isEnabled = false
                 csvCloudSwitch.isEnabled = false
             } else {
@@ -134,11 +117,16 @@ class ExportOptionsDialog @Inject constructor(
                 // Don't reset values - just allow user to change them
                 logEmailSwitch.isEnabled = true
                 logCloudSwitch.isEnabled = isCloudConfigured
-                settingsLocalSwitch.isEnabled = true
-                settingsCloudSwitch.isEnabled = isCloudConfigured
+                settingsLocalCheckbox.isEnabled = true
+                settingsCloudCheckbox.isEnabled = isCloudConfigured
                 csvLocalSwitch.isEnabled = true
                 csvCloudSwitch.isEnabled = isCloudConfigured
             }
+        }
+        
+        // Apply initial state based on saved preferences
+        if (allCloudSwitch.isChecked && isCloudConfigured) {
+            applyAllCloudState(true)
         }
 
         allCloudSwitch.setOnCheckedChangeListener { _, isChecked ->
@@ -160,8 +148,8 @@ class ExportOptionsDialog @Inject constructor(
                 sp.putBoolean(PREF_ALL_CLOUD_ENABLED, allCloudSwitch.isChecked)
                 sp.putBoolean(PREF_LOG_EMAIL_ENABLED, logEmailSwitch.isChecked)
                 sp.putBoolean(PREF_LOG_CLOUD_ENABLED, logCloudSwitch.isChecked)
-                sp.putBoolean(PREF_SETTINGS_LOCAL_ENABLED, settingsLocalSwitch.isChecked)
-                sp.putBoolean(PREF_SETTINGS_CLOUD_ENABLED, settingsCloudSwitch.isChecked)
+                sp.putBoolean(PREF_SETTINGS_LOCAL_ENABLED, settingsLocalCheckbox.isChecked)
+                sp.putBoolean(PREF_SETTINGS_CLOUD_ENABLED, settingsCloudCheckbox.isChecked)
                 sp.putBoolean(PREF_CSV_LOCAL_ENABLED, csvLocalSwitch.isChecked)
                 sp.putBoolean(PREF_CSV_CLOUD_ENABLED, csvCloudSwitch.isChecked)
                 
@@ -200,6 +188,26 @@ class ExportOptionsDialog @Inject constructor(
     }
     
     /**
+     * Set up at-least-one-selected logic for two checkboxes
+     * Both can be selected, but at least one must be selected
+     */
+    private fun setupAtLeastOneSelected(checkbox1: CheckBox, checkbox2: CheckBox) {
+        checkbox1.setOnCheckedChangeListener { _, isChecked ->
+            // Ensure at least one is checked
+            if (!isChecked && !checkbox2.isChecked) {
+                checkbox1.isChecked = true
+            }
+        }
+        
+        checkbox2.setOnCheckedChangeListener { _, isChecked ->
+            // Ensure at least one is checked
+            if (!isChecked && !checkbox1.isChecked) {
+                checkbox2.isChecked = true
+            }
+        }
+    }
+    
+    /**
      * Get current export destination preferences
      */
     fun isAllCloudEnabled(): Boolean {
@@ -214,10 +222,27 @@ class ExportOptionsDialog @Inject constructor(
         return value
     }
     
+    fun isSettingsLocalEnabled(): Boolean {
+        val value = sp.getBoolean(PREF_SETTINGS_LOCAL_ENABLED, true)
+        aapsLogger.info(LTag.CORE, "$LOG_PREFIX ExportDestination: isSettingsLocalEnabled=$value")
+        return value
+    }
+    
     fun isSettingsCloudEnabled(): Boolean {
         val value = sp.getBoolean(PREF_SETTINGS_CLOUD_ENABLED, false)
         aapsLogger.info(LTag.CORE, "$LOG_PREFIX ExportDestination: isSettingsCloudEnabled=$value")
         return value
+    }
+    
+    /**
+     * Check if both local and cloud are enabled for settings export
+     */
+    fun isSettingsBothEnabled(): Boolean {
+        val localEnabled = sp.getBoolean(PREF_SETTINGS_LOCAL_ENABLED, true)
+        val cloudEnabled = sp.getBoolean(PREF_SETTINGS_CLOUD_ENABLED, false)
+        val bothEnabled = localEnabled && cloudEnabled
+        aapsLogger.info(LTag.CORE, "$LOG_PREFIX ExportDestination: isSettingsBothEnabled=$bothEnabled (local=$localEnabled, cloud=$cloudEnabled)")
+        return bothEnabled
     }
     
     fun isCsvCloudEnabled(): Boolean {
@@ -256,9 +281,18 @@ class ExportOptionsDialog @Inject constructor(
         sp.putBoolean(PREF_ALL_CLOUD_ENABLED, true)
         sp.putBoolean(PREF_LOG_EMAIL_ENABLED, false)
         sp.putBoolean(PREF_LOG_CLOUD_ENABLED, true)
-        sp.putBoolean(PREF_SETTINGS_LOCAL_ENABLED, false)
+        sp.putBoolean(PREF_SETTINGS_LOCAL_ENABLED, true)
         sp.putBoolean(PREF_SETTINGS_CLOUD_ENABLED, true)
         sp.putBoolean(PREF_CSV_LOCAL_ENABLED, false)
         sp.putBoolean(PREF_CSV_CLOUD_ENABLED, true)
+    }
+
+    /**
+     * Enable local storage for settings export
+     * This is called when user declines cloud export but we still want to ensure local storage is enabled
+     */
+    fun enableLocalStorage() {
+        aapsLogger.info(LTag.CORE, "$LOG_PREFIX ExportDestination: Enabling local storage")
+        sp.putBoolean(PREF_SETTINGS_LOCAL_ENABLED, true)
     }
 }

@@ -182,6 +182,8 @@ class CloudDirectoryDialog @Inject constructor(
                     ToastUtils.longInfoToast(activity, rh.gs(R.string.can_change_in_export_settings))
                 }
                 .setNegativeButton(rh.gs(app.aaps.core.ui.R.string.no)) { _, _ ->
+                    // Still enable local storage even when user declines cloud export
+                    exportOptionsDialog.enableLocalStorage()
                     ToastUtils.longInfoToast(activity, rh.gs(R.string.can_change_in_export_settings))
                 }
                 .show()
