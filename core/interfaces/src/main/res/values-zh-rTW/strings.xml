@@ -55,6 +55,7 @@ Other
     <string name="tomorrow">明天</string>
     <string name="today">今天</string>
     <string name="yesterday">昨天</string>
+    <string name="date_format_short">MM/dd</string>
     <!-- Rx -->
     <string name="connecting_for">連線中 %1$d 秒</string>
     <string name="handshaking">交握中</string>
