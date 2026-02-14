@@ -926,6 +926,8 @@ class GoogleDriveManager @Inject constructor(
             // TODO: Implement logic to clear notification
         }
         errorNotificationId = null
+        // Notify UI to update cloud storage error state immediately
+        rxBus.send(EventCloudStorageStatusChanged())
     }
 
     /**
