@@ -3,6 +3,7 @@ package app.aaps.plugins.source
 import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
+import androidx.annotation.VisibleForTesting
 import androidx.work.WorkerParameters
 import androidx.work.workDataOf
 import app.aaps.core.data.model.GV
@@ -15,7 +16,6 @@ import app.aaps.core.data.ue.Sources
 import app.aaps.core.interfaces.db.PersistenceLayer
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.logging.LTag
-import app.aaps.core.interfaces.logging.UserEntryLogger
 import app.aaps.core.interfaces.plugin.PluginDescription
 import app.aaps.core.interfaces.receivers.Intents
 import app.aaps.core.interfaces.resources.ResourceHelper
@@ -23,7 +23,7 @@ import app.aaps.core.interfaces.source.BgSource
 import app.aaps.core.interfaces.source.XDripSource
 import app.aaps.core.interfaces.utils.DateUtil
 import app.aaps.core.keys.BooleanKey
-import app.aaps.core.keys.Preferences
+import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.objects.workflow.LoggingWorker
 import app.aaps.core.utils.receivers.DataWorkerStorage
 import kotlinx.coroutines.Dispatchers
@@ -68,7 +68,6 @@ class XdripSourcePlugin @Inject constructor(
         @Inject lateinit var preferences: Preferences
         @Inject lateinit var dateUtil: DateUtil
         @Inject lateinit var dataWorkerStorage: DataWorkerStorage
-        @Inject lateinit var uel: UserEntryLogger
 
         fun getSensorStartTime(bundle: Bundle): Long? {
             val now = dateUtil.now()
@@ -121,10 +120,12 @@ class XdripSourcePlugin @Inject constructor(
                 else -> newSensorStartTime
             }
             // Always update glucoseValues, but use the decided sensorStartTime
-            persistenceLayer.insertCgmSourceData(Sources.Xdrip, glucoseValues, emptyList(), finalSensorStartTime)
-                .doOnError { ret = Result.failure(workDataOf("Error" to it.toString())) }
-                .blockingGet()
-                .also { savedValues -> savedValues.all().forEach { xdripSourcePlugin.detectSource(it) } }
+            if (glucoseValues[0].timestamp > 0 && glucoseValues[0].value > 0.0)
+                persistenceLayer.insertCgmSourceData(Sources.Xdrip, glucoseValues, emptyList(), finalSensorStartTime)
+                    .doOnError { ret = Result.failure(workDataOf("Error" to it.toString())) }
+                    .blockingGet()
+                    .also { savedValues -> savedValues.all().forEach { xdripSourcePlugin.detectSource(it) } }
+            else return Result.failure(workDataOf("Error" to "missing glucoseValue"))
             xdripSourcePlugin.sensorBatteryLevel = bundle.getInt(Intents.EXTRA_SENSOR_BATTERY, -1)
             return ret
         }

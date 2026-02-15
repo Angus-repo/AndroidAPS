@@ -35,7 +35,6 @@
     <string name="profile">檔案</string>
     <string name="doprofileswitch">切換檔案</string>
     <string name="exitwizard">跳過設定嚮導</string>
-    <string name="setupwizard_loop_description">按下面的按鈕啟用AAPS建議/進行基礎變更</string>
     <string name="setupwizard_sensitivity_description">敏感度外掛用於敏感度偵測和COB計算。更多資訊請查看：</string>
     <string name="setupwizard_sensitivity_url">https://wiki.aaps.app/zh-tw/latest/DailyLifeWithAaps/SensitivityDetectionAndCob.html</string>
     <string name="setupwizard_aps_description">從可用的算法中選擇一個。它們按從舊到新的順序排列。較新的算法通常更強大和更積極。因此，如果您是新手循環用戶，可能會從AMA開始，而不是最新的。請勿忘記閱讀OpenAPS文檔並在使用前進行配置。</string>
@@ -48,10 +47,10 @@
     <string name="fabric_upload">Fabric上傳</string>
     <string name="unattended_settings_export">自動設定匯出</string>
     <string name="unattended_settings_export_summary">啟用此功能將安全儲存您的密碼於手機上</string>
+    
     <string name="identification">標識（電子郵件、FB或Discord暱稱等）</string>
     <string name="request">請求</string>
     <string name="apsmode_title">APS模式</string>
-    <string name="setupwizard_preferred_aps_mode">首選APS模式</string>
     <string name="error_asking_for_permissions">請求權限時出錯</string>
     <string name="alert_dialog_permission_battery_optimization_failed">此設備似乎不支援電池優化白名單 - 您可能會遇到效能問題。</string>
     <!--    ConfigBuilder-->
@@ -168,4 +167,143 @@
     <string name="metadata_format_other">未知的匯出格式</string>
     <string name="reset_aps_results">重置APS結果</string>
     <string name="error_accessing_filesystem_select_aaps_directory_properly">無法存取檔案系統。請正確選擇 AAPS 目錄。</string>
+
+    <!-- Google Drive Storage -->
+    <string name="storage_local">本地儲存</string>
+    <string name="storage_google_drive">Google 雲端硬碟</string>
+    <string name="select_storage_type">選擇儲存類型</string>
+    <string name="google_drive_authentication">Google 雲端硬碟驗證</string>
+    <string name="authenticate_with_google_drive">使用 Google 雲端硬碟驗證</string>
+    <string name="google_drive_authentication_required">需要 Google 雲端硬碟驗證</string>
+    <string name="google_drive_authentication_in_progress">正在驗證 Google 雲端硬碟...</string>
+    <string name="google_drive_authentication_success">Google 雲端硬碟驗證成功</string>
+    <string name="google_drive_authentication_failed">Google 雲端硬碟驗證失敗</string>
+    <string name="google_drive_connection_error">Google 雲端硬碟連線錯誤</string>
+    <string name="google_drive_select_folder">選擇 Google 雲端硬碟資料夾</string>
+    <string name="google_drive_connection_lost">Google 雲端硬碟連線中斷。請重新連線。</string>
+    <string name="google_drive_token_expired">Google 雲端硬碟存取權限已過期。請重新驗證。</string>
+    <string name="google_drive_error_occurred">Google 雲端硬碟連線發生錯誤</string>
+    <string name="google_drive_reauthorize_message">Google 雲端硬碟連線失敗。您要重新驗證嗎？</string>
+    <string name="reauthorize">重新驗證</string>
+    <string name="google_drive_auth_success">Google 雲端硬碟驗證成功</string>
+    <string name="enable_cloud_export_title">啟用雲端匯出</string>
+    <string name="enable_cloud_export_message">是否要將匯出選項啟用雲端？這將會在「匯出選項」中啟用「全部雲端」選項。</string>
+    <string name="can_change_in_export_settings">你可以稍後在「匯出選項」中修改此設定</string>    <string name="setup_cloud_directory_first">請先設定「雲端目錄」後才能使用「匯出選項」</string>    <string name="google_drive_auth_failed">Google 雲端硬碟驗證失敗</string>
+    <string name="google_drive_error">Google 雲端硬碟錯誤：%1$s</string>
+    <string name="google_drive_auth_error">Google 雲端硬碟驗證錯誤</string>
+    <string name="google_drive_authorization">Google 雲端硬碟授權</string>
+    <string name="root_folder">根目錄</string>
+    <string name="backup_to_google_drive">備份到 Google 雲端硬碟</string>
+    <string name="google_drive_auth_cancel">驗證已取消</string>
+    <string name="google_drive_auth_waiting">等待驗證中...</string>
+    <string name="google_drive_auth_waiting_message">請在瀏覽器中完成驗證並返回此應用程式。</string>
+    <string name="google_drive_auth_timeout">驗證逾時</string>
+    <string name="google_drive_auth_timeout_message">驗證逾時。請再試一次。</string>
+    <string name="create_new_folder">建立新資料夾</string>
+    <string name="select_google_drive_folder">選擇 Google 雲端硬碟資料夾</string>
+    <string name="selected_root_folder">已選擇：根目錄</string>
+    <string name="selected_folder">已選擇：%1$s</string>
+    <string name="folder_name">資料夾名稱</string>
+    <string name="create_folder">建立資料夾</string>
+    <string name="create">建立</string>
+    <string name="folder_name_required">必須輸入資料夾名稱</string>
+    <string name="folder_creation_failed">建立資料夾失敗：%1$s</string>
+    <string name="folder_created_successfully">資料夾建立成功：%1$s</string>
+    <string name="folder_creation_error">建立資料夾時發生錯誤</string>
+
+    <string name="local_directory">本地目錄</string>
+    <string name="cloud_directory">雲端目錄</string>
+    
+    <!-- Export options -->
+    <string name="export_options">匯出選項</string>
+    <string name="log_export_option">日誌</string>
+    <string name="send_logs_to_cloud">通過雲端儲存日誌</string>
+    <string name="user_entries_csv_export_option">匯出使用者輸入到 Excel(csv)</string>
+    <string name="user_settings_export_option">使用者設定</string>
+    <string name="export_csv_to_cloud">匯出使用者輸入到雲端(csv)</string>
+    <string name="export_csv_to_local">匯出使用者輸入到本地(csv)</string>
+    <string name="email_option">電子郵件</string>
+    <string name="local_storage_option">本地儲存</string>
+    <string name="cloud_storage_option">雲端儲存</string>
+    <string name="export_all_cloud">全部雲端</string>
+    <string name="export_settings_local">匯出設定（本地）</string>
+    <string name="export_settings_cloud">匯出設定（雲端）</string>
+    <string name="export_settings_both">匯出設定（本地+雲端）</string>
+    <string name="import_settings_local">匯入設定（本地）</string>
+    <string name="import_settings_cloud">匯入設定（雲端）</string>
+    <string name="import_settings_both">匯入設定（本地/雲端）</string>
+    
+    <!-- Import source selection dialog -->
+    <string name="select_import_source">選擇匯入來源</string>
+    <string name="import_from_local">從本地儲存匯入</string>
+    <string name="import_from_cloud">從雲端儲存匯入</string>
+    <string name="import_source_local_description">從裝置儲存匯入設定</string>
+    <string name="import_source_cloud_description">從雲端儲存匯入設定</string>
+    <string name="load_more">載入更多</string>
+    <string name="load_more_with_count">載入下 %1$d 筆（已載入 %2$d 筆）</string>
+    <string name="loading">載入中…</string>
+    <string name="loading_progress">正在載入第 %1$d/%2$d 筆…</string>
+    <string name="loading_file_progress">正在載入 %1$s（%2$d/%3$d）…</string>
+    <string name="cloud_import_file_count">顯示 %1$d 筆，共 %2$d 筆</string>
+    <string name="cloud_import_file_count_all">顯示全部 %1$d 筆</string>
+    <string name="loading_from_google_drive">正在從 Google 雲端硬碟載入設定，請稍候…</string>
+    <string name="exported_to_google_drive">設定已成功匯出至 Google 雲端硬碟</string>
+    <string name="export_to_google_drive_failed">匯出至 Google 雲端硬碟失敗</string>
+    <string name="google_drive_connection_failed">Google 雲端硬碟連線失敗</string>
+    <string name="no_settings_files_found">在 Google 雲端硬碟中找不到設定檔案</string>
+    <string name="google_drive_folder_error">載入 Google 雲端硬碟資料夾失敗</string>
+    <string name="logs_uploaded_to_google_drive">日誌已成功上傳至 Google 雲端硬碟</string>
+    <string name="logs_upload_failed">上傳日誌至 Google 雲端硬碟失敗</string>
+    <string name="logs_upload_error">上傳日誌至 Google 雲端硬碟時發生錯誤</string>
+    <string name="csv_uploaded_to_google_drive">使用者項目 CSV 已成功上傳至 Google 雲端硬碟</string>
+    <string name="csv_upload_failed">上傳使用者項目 CSV 至 Google 雲端硬碟失敗</string>
+    <string name="csv_upload_error">上傳 CSV 至雲端時發生錯誤</string>
+    <string name="export_options_updated">匯出選項設定已更新</string>
+    <string name="clear_action">清除設定</string>
+    <string name="clear_cloud_settings">清除雲端設定</string>
+    <string name="clear_cloud_settings_message">這將切換到本地儲存並清除授權。是否繼續？</string>
+    <string name="uploading_to_cloud">正在上傳...</string>
+    <string name="cloud_directory_path">雲端目錄：%1$s</string>
+    
+    <!-- Google Drive error messages -->
+    <string name="google_drive_account_not_linked">Google 雲端硬碟帳號未連結</string>
+    <string name="google_drive_token_refresh_failed">無法更新 Google 雲端硬碟存取權杖</string>
+    <string name="google_drive_token_refresh_error">無法更新 Google 雲端硬碟存取權杖：%1$s</string>
+    <string name="google_drive_no_valid_token">無法取得有效的存取權杖</string>
+    <string name="google_drive_connection_test_failed">Google 雲端硬碟連線測試失敗</string>
+    <string name="google_drive_connect_error">無法連線到 Google 雲端硬碟：%1$s</string>
+    <string name="google_drive_list_folders_failed">無法列出 Google 雲端硬碟資料夾</string>
+    <string name="google_drive_list_folders_error">列出資料夾時發生錯誤：%1$s</string>
+    <string name="google_drive_upload_no_id">上傳成功但未返回檔案 ID</string>
+    <string name="google_drive_upload_verify_failed">上傳驗證失敗</string>
+    <string name="google_drive_upload_failed">上傳失敗：%1$s</string>
+    <string name="google_drive_upload_error">上傳檔案時發生錯誤：%1$s</string>
+    <string name="google_drive_folder_access_error">無法建立或存取目標資料夾：%1$s</string>
+    <string name="google_drive_list_settings_failed">無法列出設定檔案</string>
+    <string name="google_drive_list_settings_error">列出設定檔案時發生錯誤：%1$s</string>
+    <string name="google_drive_download_failed">下載檔案失敗</string>
+    <string name="google_drive_download_error">下載檔案時發生錯誤：%1$s</string>
+    
+    <!-- Provider-agnostic cloud storage strings -->
+    <string name="exported_to_cloud">設定已成功匯出至雲端儲存</string>
+    <string name="export_to_cloud_failed">匯出至雲端儲存失敗</string>
+    <string name="cloud_connection_failed">雲端儲存連線失敗</string>
+    <string name="loading_from_cloud">正在從雲端儲存載入設定，請稍候…</string>
+    <string name="cloud_folder_error">載入雲端儲存資料夾失敗</string>
+    <string name="csv_uploaded_to_cloud">使用者項目 CSV 已成功上傳至雲端儲存</string>
+    <string name="cloud_reauthorize_message">雲端儲存連線失敗。您要重新驗證嗎？</string>
+    <string name="logs_uploaded_to_cloud">日誌已成功上傳至雲端儲存</string>
+    <string name="cloud_auth_success">雲端儲存驗證成功</string>
+    <string name="cloud_auth_failed">雲端儲存驗證失敗</string>
+    <string name="cloud_auth_error">雲端儲存驗證錯誤：%1$s</string>
+    <string name="cloud_authorization_title">%1$s 授權</string>
+    <string name="cloud_authorization_message">%1$s 授權頁面已在您的瀏覽器中開啟。\n\n請完成授權後返回此應用程式。\n\n授權完成後，此對話框將自動關閉。</string>
+    <string name="cloud_auth_start_failed">無法開始授權</string>
+    <string name="cloud_auth_cancelled">授權已取消</string>
+    <string name="cloud_auth_timeout">授權逾時，請重試</string>
+    <string name="cloud_token_expired_or_invalid">雲端儲存授權已過期或失效。請重新授權。</string>
+
+    <string name="authorization_status">授權狀態</string>
+    <string name="google_drive_authorized">已授權 Google 雲端硬碟</string>
+    <string name="google_drive_reauth_required">請「清除設定」後再重新授權 Google 雲端硬碟</string>
 </resources>
