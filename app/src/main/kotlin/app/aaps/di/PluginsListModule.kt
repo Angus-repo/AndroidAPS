@@ -48,6 +48,7 @@ import app.aaps.plugins.source.SyaiPlugin
 import app.aaps.plugins.source.TomatoPlugin
 import app.aaps.plugins.source.XdripSourcePlugin
 import app.aaps.plugins.sync.garmin.GarminPlugin
+import app.aaps.plugins.sync.googlehealth.GoogleHealthPlugin
 import app.aaps.plugins.sync.nsclient.NSClientPlugin
 import app.aaps.plugins.sync.nsclientV3.NSClientV3Plugin
 import app.aaps.plugins.sync.openhumans.OpenHumansUploaderPlugin
@@ -330,6 +331,12 @@ abstract class PluginsListModule {
     @IntoMap
     @IntKey(360)
     abstract fun bindTidepoolPlugin(plugin: TidepoolPlugin): PluginBase
+
+    @Binds
+    @AllConfigs
+    @IntoMap
+    @IntKey(363)
+    abstract fun bindGoogleHealthPlugin(plugin: GoogleHealthPlugin): PluginBase
 
     @Binds
     @AllConfigs

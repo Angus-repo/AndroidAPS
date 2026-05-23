@@ -50,6 +50,9 @@ dependencies {
     // DataLayerListenerService
     api(libs.com.google.android.gms.playservices.wearable)
 
+    // Google Health Connect
+    api(libs.androidx.health.connect)
+
     // Garmin
     api(libs.com.garmin.connectiq) { artifact { type = "aar" } }
     androidTestImplementation(libs.com.garmin.connectiq) { artifact { type = "aar" } }

@@ -5,6 +5,15 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="app.aaps.weardata.permission" />
 
+    <!-- Google Health Connect permissions -->
+    <uses-permission android:name="android.permission.health.WRITE_BLOOD_GLUCOSE" />
+    <uses-permission android:name="android.permission.health.WRITE_NUTRITION" />
+    <uses-permission android:name="android.permission.health.WRITE_EXERCISE" />
+
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
+
     <permission
         android:name="app.aaps.weardata.permission"
         android:label="AAPS WEAR DATA"

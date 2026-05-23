@@ -9,6 +9,8 @@ import app.aaps.core.interfaces.sync.DataSyncSelectorXdrip
 import app.aaps.core.interfaces.sync.XDripBroadcast
 import app.aaps.plugins.sync.garmin.LoopHub
 import app.aaps.plugins.sync.garmin.LoopHubImpl
+import app.aaps.plugins.sync.googlehealth.GoogleHealthFragment
+import app.aaps.plugins.sync.googlehealth.workers.GoogleHealthSyncWorker
 import app.aaps.plugins.sync.nsShared.NSClientFragment
 import app.aaps.plugins.sync.nsShared.StoreDataForDbImpl
 import app.aaps.plugins.sync.nsclient.data.NSSettingsStatusImpl
@@ -70,6 +72,9 @@ abstract class SyncModule {
     @ContributesAndroidInjector abstract fun contributesTreatmentWorker(): LoadTreatmentsWorker
     @ContributesAndroidInjector abstract fun contributesLoadDeviceStatusWorker(): LoadDeviceStatusWorker
     @ContributesAndroidInjector abstract fun contributesDataSyncWorker(): DataSyncWorker
+
+    @ContributesAndroidInjector abstract fun contributesGoogleHealthFragment(): GoogleHealthFragment
+    @ContributesAndroidInjector abstract fun contributesGoogleHealthSyncWorker(): GoogleHealthSyncWorker
 
     @ContributesAndroidInjector abstract fun contributesTidepoolFragment(): TidepoolFragment
     @ContributesAndroidInjector abstract fun contributesAuthFlowInActivity(): AuthFlowIn
