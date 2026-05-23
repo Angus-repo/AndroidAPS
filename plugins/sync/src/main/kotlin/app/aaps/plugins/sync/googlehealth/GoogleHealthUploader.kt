@@ -76,7 +76,7 @@ class GoogleHealthUploader @Inject constructor(
                         endTime = startInstant.plusMillis(1),
                         endZoneOffset = ZoneOffset.UTC,
                         metadata = Metadata.manualEntry(),
-                        carbohydrates = Mass.grams(ca.amount),
+                        totalCarbohydrate = Mass.grams(ca.amount),
                         name = "AAPS",
                     )
                 } catch (e: Exception) {
