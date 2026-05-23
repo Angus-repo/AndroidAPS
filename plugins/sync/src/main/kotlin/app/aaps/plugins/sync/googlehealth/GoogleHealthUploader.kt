@@ -6,6 +6,7 @@ import androidx.health.connect.client.records.BloodGlucoseRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.NutritionRecord
 import androidx.health.connect.client.records.Record
+import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.units.BloodGlucose
 import androidx.health.connect.client.units.Mass
 import app.aaps.core.data.model.TE
@@ -51,9 +52,9 @@ class GoogleHealthUploader @Inject constructor(
                     records += BloodGlucoseRecord(
                         time = Instant.ofEpochMilli(gv.timestamp),
                         zoneOffset = ZoneOffset.UTC,
+                        metadata = Metadata.manualEntry(),
                         level = BloodGlucose.milligramsPerDeciliter(gv.value),
                         specimenSource = BloodGlucoseRecord.SPECIMEN_SOURCE_INTERSTITIAL_FLUID,
-                        mealType = BloodGlucoseRecord.RELATION_TO_MEAL_UNKNOWN,
                         relationToMeal = BloodGlucoseRecord.RELATION_TO_MEAL_UNKNOWN,
                     )
                 } catch (e: Exception) {
@@ -74,6 +75,7 @@ class GoogleHealthUploader @Inject constructor(
                         startZoneOffset = ZoneOffset.UTC,
                         endTime = startInstant.plusMillis(1),
                         endZoneOffset = ZoneOffset.UTC,
+                        metadata = Metadata.manualEntry(),
                         carbohydrates = Mass.grams(ca.amount),
                         name = "AAPS",
                     )
@@ -97,6 +99,7 @@ class GoogleHealthUploader @Inject constructor(
                         startZoneOffset = ZoneOffset.UTC,
                         endTime = endInstant,
                         endZoneOffset = ZoneOffset.UTC,
+                        metadata = Metadata.manualEntry(),
                         exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT,
                         title = te.note ?: "Exercise",
                     )
