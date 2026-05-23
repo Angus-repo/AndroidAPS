@@ -2,6 +2,7 @@ package app.aaps.plugins.sync.googlehealth
 
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.BloodGlucoseRecord
 import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.NutritionRecord
@@ -42,6 +43,21 @@ class GoogleHealthUploader @Inject constructor(
         }
 
         val client = HealthConnectClient.getOrCreate(context)
+
+        val requiredPermissions = buildSet {
+            if (preferences.get(GoogleHealthBooleanKey.SyncBloodGlucose))
+                add(HealthPermission.getWritePermission(BloodGlucoseRecord::class))
+            if (preferences.get(GoogleHealthBooleanKey.SyncCarbs))
+                add(HealthPermission.getWritePermission(NutritionRecord::class))
+            if (preferences.get(GoogleHealthBooleanKey.SyncExercise))
+                add(HealthPermission.getWritePermission(ExerciseSessionRecord::class))
+        }
+        val grantedPermissions = client.permissionController.getGrantedPermissions()
+        if (!grantedPermissions.containsAll(requiredPermissions)) {
+            rxBus.send(EventGoogleHealthNewLog("ERR", "Missing Health Connect permissions — open the Google Health Connect plugin screen and tap Grant Permissions"))
+            return
+        }
+
         val from = dateUtil.now() - T.hours(24).msecs()
         val records = mutableListOf<Record>()
 

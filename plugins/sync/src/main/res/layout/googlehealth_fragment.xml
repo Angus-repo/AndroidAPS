@@ -6,6 +6,14 @@
     android:orientation="vertical"
     tools:context=".googlehealth.GoogleHealthFragment">
 
+    <Button
+        android:id="@+id/grant_permissions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="8dp"
+        android:text="@string/google_health_grant_permissions"
+        android:visibility="gone" />
+
     <ScrollView
         android:id="@+id/log_scrollview"
         android:layout_width="match_parent"

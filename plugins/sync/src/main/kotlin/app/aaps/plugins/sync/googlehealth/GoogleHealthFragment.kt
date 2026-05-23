@@ -11,7 +11,14 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.core.view.MenuCompat
 import androidx.core.view.MenuProvider
+import androidx.health.connect.client.HealthConnectClient
+import androidx.health.connect.client.PermissionController
+import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.BloodGlucoseRecord
+import androidx.health.connect.client.records.ExerciseSessionRecord
+import androidx.health.connect.client.records.NutritionRecord
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
 import app.aaps.core.interfaces.logging.AAPSLogger
 import app.aaps.core.interfaces.plugin.PluginBase
 import app.aaps.core.interfaces.plugin.PluginFragment
@@ -26,6 +33,7 @@ import app.aaps.plugins.sync.googlehealth.events.EventGoogleHealthUpdateGUI
 import dagger.android.support.DaggerFragment
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.kotlin.plusAssign
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class GoogleHealthFragment : DaggerFragment(), MenuProvider, PluginFragment {
@@ -40,12 +48,27 @@ class GoogleHealthFragment : DaggerFragment(), MenuProvider, PluginFragment {
     companion object {
         const val ID_MENU_CLEAR_LOG = 601
         const val ID_MENU_FULL_SYNC = 602
+
+        val PERMISSIONS = setOf(
+            HealthPermission.getWritePermission(BloodGlucoseRecord::class),
+            HealthPermission.getWritePermission(NutritionRecord::class),
+            HealthPermission.getWritePermission(ExerciseSessionRecord::class),
+        )
     }
 
     override var plugin: PluginBase? = null
 
     private val disposable = CompositeDisposable()
     private var handler = Handler(HandlerThread(this::class.simpleName + "Handler").also { it.start() }.looper)
+
+    private val permissionLauncher = registerForActivityResult(
+        PermissionController.createRequestPermissionResultContract()
+    ) { granted ->
+        checkAndUpdatePermissionButton()
+        if (granted.containsAll(PERMISSIONS)) {
+            googleHealthPlugin.triggerFullSync()
+        }
+    }
 
     private var _binding: GooglehealthFragmentBinding? = null
     private val binding get() = _binding!!
@@ -54,6 +77,7 @@ class GoogleHealthFragment : DaggerFragment(), MenuProvider, PluginFragment {
         GooglehealthFragmentBinding.inflate(inflater, container, false).also {
             _binding = it
             requireActivity().addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
+            it.grantPermissions.setOnClickListener { permissionLauncher.launch(PERMISSIONS) }
         }.root
 
     override fun onCreateMenu(menu: Menu, inflater: MenuInflater) {
@@ -89,6 +113,7 @@ class GoogleHealthFragment : DaggerFragment(), MenuProvider, PluginFragment {
             .observeOn(aapsSchedulers.main)
             .subscribe({ updateGui() }, fabricPrivacy::logException)
         updateGui()
+        checkAndUpdatePermissionButton()
     }
 
     override fun onPause() {
@@ -111,5 +136,23 @@ class GoogleHealthFragment : DaggerFragment(), MenuProvider, PluginFragment {
     private fun updateGui() {
         if (_binding == null) return
         binding.log.text = googleHealthPlugin.textLog()
+    }
+
+    private fun checkAndUpdatePermissionButton() {
+        val ctx = context ?: return
+        if (HealthConnectClient.getSdkStatus(ctx) != HealthConnectClient.SDK_AVAILABLE) {
+            _binding?.grantPermissions?.visibility = View.GONE
+            return
+        }
+        lifecycleScope.launch {
+            try {
+                val client = HealthConnectClient.getOrCreate(ctx)
+                val granted = client.permissionController.getGrantedPermissions()
+                val hasAll = granted.containsAll(PERMISSIONS)
+                _binding?.grantPermissions?.visibility = if (hasAll) View.GONE else View.VISIBLE
+            } catch (e: Exception) {
+                _binding?.grantPermissions?.visibility = View.VISIBLE
+            }
+        }
     }
 }

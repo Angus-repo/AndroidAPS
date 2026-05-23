@@ -218,5 +218,6 @@
     <string name="google_health_sync_exercise_title">Sync exercise</string>
     <string name="google_health_not_available">Health Connect is not installed or unavailable on this device</string>
     <string name="full_google_health_sync_comment">Re-upload the last 24 hours of data to Health Connect?</string>
+    <string name="google_health_grant_permissions">Grant Health Connect Permissions</string>
 
 </resources>
