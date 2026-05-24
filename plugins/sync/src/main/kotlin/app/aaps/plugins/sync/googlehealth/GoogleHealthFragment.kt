@@ -60,15 +60,7 @@ class GoogleHealthFragment : DaggerFragment(), MenuProvider, PluginFragment {
 
     private val disposable = CompositeDisposable()
     private var handler = Handler(HandlerThread(this::class.simpleName + "Handler").also { it.start() }.looper)
-
-    private val permissionLauncher = registerForActivityResult(
-        PermissionController.createRequestPermissionResultContract()
-    ) { granted ->
-        checkAndUpdatePermissionButton()
-        if (granted.containsAll(PERMISSIONS)) {
-            googleHealthPlugin.triggerFullSync()
-        }
-    }
+    private var hadMissingPermissions = false
 
     private var _binding: GooglehealthFragmentBinding? = null
     private val binding get() = _binding!!
@@ -77,13 +69,7 @@ class GoogleHealthFragment : DaggerFragment(), MenuProvider, PluginFragment {
         GooglehealthFragmentBinding.inflate(inflater, container, false).also {
             _binding = it
             requireActivity().addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
-            it.grantPermissions.setOnClickListener {
-                try {
-                    permissionLauncher.launch(PERMISSIONS)
-                } catch (e: Exception) {
-                    aapsLogger.error("GoogleHealthFragment", "Cannot launch Health Connect permission request: ${e.message}")
-                }
-            }
+            it.grantPermissions.setOnClickListener { requestHealthConnectPermissions() }
         }.root
 
     override fun onCreateMenu(menu: Menu, inflater: MenuInflater) {
@@ -119,7 +105,7 @@ class GoogleHealthFragment : DaggerFragment(), MenuProvider, PluginFragment {
             .observeOn(aapsSchedulers.main)
             .subscribe({ updateGui() }, fabricPrivacy::logException)
         updateGui()
-        checkAndUpdatePermissionButton()
+        checkAndUpdatePermissionButton(triggerSyncIfJustGranted = hadMissingPermissions)
     }
 
     override fun onPause() {
@@ -144,7 +130,23 @@ class GoogleHealthFragment : DaggerFragment(), MenuProvider, PluginFragment {
         binding.log.text = googleHealthPlugin.textLog()
     }
 
-    private fun checkAndUpdatePermissionButton() {
+    private fun requestHealthConnectPermissions() {
+        try {
+            val contract = PermissionController.createRequestPermissionResultContract()
+            val intent = contract.createIntent(requireContext(), PERMISSIONS)
+            hadMissingPermissions = true
+            startActivity(intent)
+        } catch (e: Exception) {
+            aapsLogger.error("GoogleHealthFragment", "Cannot open Health Connect permissions: ${e.message}")
+            try {
+                startActivity(android.content.Intent(HealthConnectClient.ACTION_HEALTH_CONNECT_SETTINGS))
+            } catch (e2: Exception) {
+                aapsLogger.error("GoogleHealthFragment", "Cannot open Health Connect settings: ${e2.message}")
+            }
+        }
+    }
+
+    private fun checkAndUpdatePermissionButton(triggerSyncIfJustGranted: Boolean = false) {
         val ctx = context ?: return
         if (HealthConnectClient.getSdkStatus(ctx) != HealthConnectClient.SDK_AVAILABLE) {
             _binding?.grantPermissions?.visibility = View.GONE
@@ -156,6 +158,10 @@ class GoogleHealthFragment : DaggerFragment(), MenuProvider, PluginFragment {
                 val granted = client.permissionController.getGrantedPermissions()
                 val hasAll = granted.containsAll(PERMISSIONS)
                 _binding?.grantPermissions?.visibility = if (hasAll) View.GONE else View.VISIBLE
+                if (hasAll && triggerSyncIfJustGranted) {
+                    hadMissingPermissions = false
+                    googleHealthPlugin.triggerFullSync()
+                }
             } catch (e: Exception) {
                 _binding?.grantPermissions?.visibility = View.VISIBLE
             }

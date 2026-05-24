@@ -84,8 +84,14 @@
             android:name="app.aaps.plugins.sync.googlehealth.HealthConnectRationaleActivity"
             android:exported="true"
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <!-- Android 13 and below: Health Connect standalone app -->
             <intent-filter>
                 <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+            <!-- Android 14 and above: Health Connect built into OS -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
             </intent-filter>
             <meta-data
                 android:name="health_permissions"
