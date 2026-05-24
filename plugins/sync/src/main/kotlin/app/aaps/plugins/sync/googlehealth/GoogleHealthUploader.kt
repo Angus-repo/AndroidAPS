@@ -68,10 +68,7 @@ class GoogleHealthUploader @Inject constructor(
                     records += BloodGlucoseRecord(
                         time = Instant.ofEpochMilli(gv.timestamp),
                         zoneOffset = ZoneOffset.UTC,
-                        metadata = Metadata(
-                            clientRecordId = "aaps-bg-${gv.timestamp}",
-                            recordingMethod = Metadata.RECORDING_METHOD_MANUAL_ENTRY,
-                        ),
+                        metadata = Metadata.manualEntry(clientRecordId = "aaps-bg-${gv.timestamp}"),
                         level = BloodGlucose.milligramsPerDeciliter(gv.value),
                         specimenSource = BloodGlucoseRecord.SPECIMEN_SOURCE_INTERSTITIAL_FLUID,
                         relationToMeal = BloodGlucoseRecord.RELATION_TO_MEAL_UNKNOWN,
@@ -94,10 +91,7 @@ class GoogleHealthUploader @Inject constructor(
                         startZoneOffset = ZoneOffset.UTC,
                         endTime = startInstant.plusMillis(1),
                         endZoneOffset = ZoneOffset.UTC,
-                        metadata = Metadata(
-                            clientRecordId = "aaps-carbs-${ca.timestamp}",
-                            recordingMethod = Metadata.RECORDING_METHOD_MANUAL_ENTRY,
-                        ),
+                        metadata = Metadata.manualEntry(clientRecordId = "aaps-carbs-${ca.timestamp}"),
                         totalCarbohydrate = Mass.grams(ca.amount),
                         name = "AAPS",
                     )
@@ -121,10 +115,7 @@ class GoogleHealthUploader @Inject constructor(
                         startZoneOffset = ZoneOffset.UTC,
                         endTime = endInstant,
                         endZoneOffset = ZoneOffset.UTC,
-                        metadata = Metadata(
-                            clientRecordId = "aaps-exercise-${te.timestamp}",
-                            recordingMethod = Metadata.RECORDING_METHOD_MANUAL_ENTRY,
-                        ),
+                        metadata = Metadata.manualEntry(clientRecordId = "aaps-exercise-${te.timestamp}"),
                         exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT,
                         title = te.note ?: "Exercise",
                     )
