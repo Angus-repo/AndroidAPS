@@ -68,7 +68,10 @@ class GoogleHealthUploader @Inject constructor(
                     records += BloodGlucoseRecord(
                         time = Instant.ofEpochMilli(gv.timestamp),
                         zoneOffset = ZoneOffset.UTC,
-                        metadata = Metadata.manualEntry(),
+                        metadata = Metadata(
+                            clientRecordId = "aaps-bg-${gv.timestamp}",
+                            recordingMethod = Metadata.RECORDING_METHOD_MANUAL_ENTRY,
+                        ),
                         level = BloodGlucose.milligramsPerDeciliter(gv.value),
                         specimenSource = BloodGlucoseRecord.SPECIMEN_SOURCE_INTERSTITIAL_FLUID,
                         relationToMeal = BloodGlucoseRecord.RELATION_TO_MEAL_UNKNOWN,
@@ -77,7 +80,7 @@ class GoogleHealthUploader @Inject constructor(
                     aapsLogger.error(LTag.CORE, "Error converting BG record", e)
                 }
             }
-            rxBus.send(EventGoogleHealthNewLog("BG", "Prepared ${bgList.size} glucose records"))
+            rxBus.send(EventGoogleHealthNewLog("BG", "Upserted ${bgList.size} glucose records"))
         }
 
         if (preferences.get(GoogleHealthBooleanKey.SyncCarbs)) {
@@ -91,7 +94,10 @@ class GoogleHealthUploader @Inject constructor(
                         startZoneOffset = ZoneOffset.UTC,
                         endTime = startInstant.plusMillis(1),
                         endZoneOffset = ZoneOffset.UTC,
-                        metadata = Metadata.manualEntry(),
+                        metadata = Metadata(
+                            clientRecordId = "aaps-carbs-${ca.timestamp}",
+                            recordingMethod = Metadata.RECORDING_METHOD_MANUAL_ENTRY,
+                        ),
                         totalCarbohydrate = Mass.grams(ca.amount),
                         name = "AAPS",
                     )
@@ -99,7 +105,7 @@ class GoogleHealthUploader @Inject constructor(
                     aapsLogger.error(LTag.CORE, "Error converting carbs record", e)
                 }
             }
-            rxBus.send(EventGoogleHealthNewLog("CARBS", "Prepared ${carbsList.size} carb records"))
+            rxBus.send(EventGoogleHealthNewLog("CARBS", "Upserted ${carbsList.size} carb records"))
         }
 
         if (preferences.get(GoogleHealthBooleanKey.SyncExercise)) {
@@ -115,7 +121,10 @@ class GoogleHealthUploader @Inject constructor(
                         startZoneOffset = ZoneOffset.UTC,
                         endTime = endInstant,
                         endZoneOffset = ZoneOffset.UTC,
-                        metadata = Metadata.manualEntry(),
+                        metadata = Metadata(
+                            clientRecordId = "aaps-exercise-${te.timestamp}",
+                            recordingMethod = Metadata.RECORDING_METHOD_MANUAL_ENTRY,
+                        ),
                         exerciseType = ExerciseSessionRecord.EXERCISE_TYPE_OTHER_WORKOUT,
                         title = te.note ?: "Exercise",
                     )
@@ -123,7 +132,7 @@ class GoogleHealthUploader @Inject constructor(
                     aapsLogger.error(LTag.CORE, "Error converting exercise record", e)
                 }
             }
-            rxBus.send(EventGoogleHealthNewLog("EX", "Prepared ${exerciseList.size} exercise records"))
+            rxBus.send(EventGoogleHealthNewLog("EX", "Upserted ${exerciseList.size} exercise records"))
         }
 
         if (records.isNotEmpty()) {
