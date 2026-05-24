@@ -5,8 +5,9 @@ import android.text.Spanned
 import androidx.preference.PreferenceCategory
 import androidx.preference.PreferenceManager
 import androidx.preference.PreferenceScreen
+import androidx.work.BackoffPolicy
 import androidx.work.ExistingWorkPolicy
-import androidx.work.OneTimeWorkRequest
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import app.aaps.core.data.configuration.Constants
 import app.aaps.core.data.plugin.PluginType
@@ -29,6 +30,7 @@ import app.aaps.plugins.sync.R
 import app.aaps.plugins.sync.googlehealth.events.EventGoogleHealthNewLog
 import app.aaps.plugins.sync.googlehealth.events.EventGoogleHealthUpdateGUI
 import app.aaps.plugins.sync.googlehealth.keys.GoogleHealthBooleanKey
+import app.aaps.plugins.sync.googlehealth.keys.GoogleHealthLongKey
 import app.aaps.plugins.sync.googlehealth.workers.GoogleHealthSyncWorker
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.kotlin.plusAssign
@@ -48,6 +50,7 @@ class GoogleHealthPlugin @Inject constructor(
     private val rxBus: RxBus,
     private val aapsSchedulers: AapsSchedulers,
     private val fabricPrivacy: FabricPrivacy,
+    private val uploader: GoogleHealthUploader,
 ) : Sync, PluginBaseWithPreferences(
     pluginDescription = PluginDescription()
         .mainType(PluginType.SYNC)
@@ -57,7 +60,7 @@ class GoogleHealthPlugin @Inject constructor(
         .shortName(R.string.google_health_short)
         .preferencesId(PluginDescription.PREFERENCE_SCREEN)
         .description(R.string.description_google_health),
-    ownPreferences = listOf(GoogleHealthBooleanKey::class.java),
+    ownPreferences = listOf(GoogleHealthBooleanKey::class.java, GoogleHealthLongKey::class.java),
     aapsLogger, rh, preferences
 ) {
 
@@ -112,6 +115,7 @@ class GoogleHealthPlugin @Inject constructor(
     }
 
     fun triggerFullSync() {
+        uploader.resetSyncCheckpoints()
         executeSync("FULL_SYNC")
     }
 
@@ -135,12 +139,11 @@ class GoogleHealthPlugin @Inject constructor(
 
     private fun executeSync(origin: String) {
         rxBus.send(EventGoogleHealthNewLog("RUN", "Starting sync: $origin"))
+        val request = OneTimeWorkRequestBuilder<GoogleHealthSyncWorker>()
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
+            .build()
         WorkManager.getInstance(context)
-            .enqueueUniqueWork(
-                JOB_NAME,
-                ExistingWorkPolicy.REPLACE,
-                OneTimeWorkRequest.Builder(GoogleHealthSyncWorker::class.java).build()
-            )
+            .enqueueUniqueWork(JOB_NAME, ExistingWorkPolicy.REPLACE, request)
     }
 
     private fun delayAndScheduleExecution(origin: String) {
