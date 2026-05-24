@@ -80,6 +80,18 @@
             android:name="app.aaps.plugins.sync.tidepool.auth.AuthFlowIn"
             android:exported="true" />
 
+        <activity
+            android:name="app.aaps.plugins.sync.googlehealth.HealthConnectRationaleActivity"
+            android:exported="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+            <meta-data
+                android:name="health_permissions"
+                android:resource="@array/health_permissions" />
+        </activity>
+
     </application>
 
 </manifest>

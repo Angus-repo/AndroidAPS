@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <array name="health_permissions">
+        <item>androidx.health.permission.BloodGlucose</item>
+        <item>androidx.health.permission.Nutrition</item>
+        <item>androidx.health.permission.ExerciseSession</item>
+    </array>
+</resources>

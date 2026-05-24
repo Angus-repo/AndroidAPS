@@ -77,7 +77,13 @@ class GoogleHealthFragment : DaggerFragment(), MenuProvider, PluginFragment {
         GooglehealthFragmentBinding.inflate(inflater, container, false).also {
             _binding = it
             requireActivity().addMenuProvider(this, viewLifecycleOwner, Lifecycle.State.RESUMED)
-            it.grantPermissions.setOnClickListener { permissionLauncher.launch(PERMISSIONS) }
+            it.grantPermissions.setOnClickListener {
+                try {
+                    permissionLauncher.launch(PERMISSIONS)
+                } catch (e: Exception) {
+                    aapsLogger.error("GoogleHealthFragment", "Cannot launch Health Connect permission request: ${e.message}")
+                }
+            }
         }.root
 
     override fun onCreateMenu(menu: Menu, inflater: MenuInflater) {
