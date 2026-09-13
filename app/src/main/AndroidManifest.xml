@@ -107,6 +107,8 @@
                 <action android:name="com.fanqies.tomatofn.BgEstimate" />
                 <!-- Receiver from GlucoRx Aidex -->
                 <action android:name="com.microtechmd.cgms.aidex.action.BgEstimate" />
+                <!-- MicroTech China: receive for diagnostics until the payload format is verified -->
+                <action android:name="com.microtech.aidexx.broadcast.action.CGM_DATA" />
                 <!-- Receiver from patched Ottai app (International) -->
                 <action android:name="info.nightscout.androidaps.action.OTTAI_APP" />
                 <!-- Receiver from patched Syai Tag app -->
