@@ -81,6 +81,10 @@ interface Intents {
 
         const val EXTRA_SIGNAL_LOST = "com.microtechmd.cgms.aidex.SignalLost"
 
+        // MicroTech China (com.microtech.aidexx). Payload decoding is not verified yet;
+        // this action is handled separately from the international Aidex BgEstimate protocol.
+        const val AIDEX_CN_CGM_DATA = "com.microtech.aidexx.broadcast.action.CGM_DATA"
+
         // Instara App -> AAPS
         // NOTE: The action name for INSTARA_APP is still called "Teljane_APP"
         const val INSTARA_APP = "info.nightscout.androidaps.action.Teljane_APP"
