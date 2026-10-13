@@ -53,6 +53,19 @@ open class DataReceiver : MetroBroadcastReceiver() {
 
     @VisibleForTesting
     fun processIntent(context: Context, intent: Intent) {
+        if (intent.action == Intents.AIDEX_CN_CGM_DATA) {
+            // The China app uses a different protocol. Do not pass its unverified payload
+            // to AidexWorker, which expects the international BgEstimate keys and units.
+            aapsLogger.info(LTag.BGSOURCE, "Received MicroTech China CGM_DATA broadcast; payload format unverified, glucose not imported")
+            try {
+                aapsLogger.debug(LTag.BGSOURCE, "MicroTech China CGM_DATA extras: ${BundleLogger.log(intent.extras)}")
+            } catch (e: RuntimeException) {
+                // Vendor Parcelable/Serializable classes may be unavailable in AAPS.
+                aapsLogger.warn(LTag.BGSOURCE, "Cannot read MicroTech China CGM_DATA extras: ${e.javaClass.simpleName}")
+            }
+            return
+        }
+
         val bundle = intent.extras ?: return
         aapsLogger.debug(LTag.CORE, "onReceive ${intent.action} ${BundleLogger.log(bundle)}")
         when (intent.action) {

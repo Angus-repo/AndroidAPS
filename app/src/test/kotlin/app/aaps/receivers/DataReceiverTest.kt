@@ -8,6 +8,8 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.ListenableWorker
 import androidx.work.OneTimeWorkRequest
 import androidx.work.WorkManager
+import app.aaps.core.interfaces.logging.AAPSLogger
+import app.aaps.core.interfaces.logging.LTag
 import app.aaps.core.interfaces.receivers.Intents
 import app.aaps.core.interfaces.utils.fabric.FabricPrivacy
 import app.aaps.core.utils.receivers.DataInbox
@@ -126,6 +128,49 @@ class DataReceiverTest : TestBase() {
     }
 
     // ---- Guard rails ----
+
+    @Test
+    @Suppress("DEPRECATION")
+    fun `China CGM data never routes to a glucose worker even with international Aidex extras`() {
+        whenever(bundle.keySet()).thenReturn(setOf(Intents.AIDEX_BG_TYPE, Intents.AIDEX_BG_VALUE, Intents.AIDEX_TIMESTAMP))
+        whenever(bundle.get(Intents.AIDEX_BG_TYPE)).thenReturn("mg/dl")
+        whenever(bundle.get(Intents.AIDEX_BG_VALUE)).thenReturn(100.0)
+        whenever(bundle.get(Intents.AIDEX_TIMESTAMP)).thenReturn(1_789_315_200_000L)
+
+        dataReceiver.processIntent(context, createIntent(Intents.AIDEX_CN_CGM_DATA))
+
+        verify(dataInbox, never()).putAndEnqueue(any(), any())
+        verify(workManager, never()).enqueueUniqueWork(any(), any(), any<OneTimeWorkRequest>())
+    }
+
+    @Test
+    fun `China CGM broadcast without extras is still recorded`() {
+        val logger = mock<AAPSLogger>()
+        dataReceiver.aapsLogger = logger
+        val intent = mock<Intent>()
+        whenever(intent.action).thenReturn(Intents.AIDEX_CN_CGM_DATA)
+
+        dataReceiver.processIntent(context, intent)
+
+        verify(logger).info(LTag.BGSOURCE, "Received MicroTech China CGM_DATA broadcast; payload format unverified, glucose not imported")
+        verify(dataInbox, never()).putAndEnqueue(any(), any())
+        verify(workManager, never()).enqueueUniqueWork(any(), any(), any<OneTimeWorkRequest>())
+    }
+
+    @Test
+    fun `unreadable China CGM extras do not crash the receiver or enqueue glucose work`() {
+        val logger = mock<AAPSLogger>()
+        dataReceiver.aapsLogger = logger
+        val intent = mock<Intent>()
+        whenever(intent.action).thenReturn(Intents.AIDEX_CN_CGM_DATA)
+        whenever(intent.extras).thenThrow(IllegalStateException("Unreadable vendor payload"))
+
+        dataReceiver.processIntent(context, intent)
+
+        verify(logger).warn(LTag.BGSOURCE, "Cannot read MicroTech China CGM_DATA extras: IllegalStateException")
+        verify(dataInbox, never()).putAndEnqueue(any(), any())
+        verify(workManager, never()).enqueueUniqueWork(any(), any(), any<OneTimeWorkRequest>())
+    }
 
     @Test
     fun `no bundle is a no-op`() {
