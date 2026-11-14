@@ -99,6 +99,7 @@ import app.aaps.core.keys.UnitDoubleKey
 import app.aaps.core.keys.interfaces.Preferences
 import app.aaps.core.objects.extensions.apsAdjustedTargetMgdl
 import app.aaps.core.objects.extensions.convertedToAbsolute
+import app.aaps.core.objects.extensions.fromGv
 import app.aaps.core.objects.extensions.round
 import app.aaps.core.objects.extensions.valueToUnits
 import app.aaps.core.objects.runningMode.PumpCommandGate
@@ -138,6 +139,19 @@ private const val HEALTH_EVENT_QUIET_PERIOD_MS = 500L
  * together with those settings, never on its own.
  */
 private const val WEAR_GRAPH_HOURS = 6L
+
+/**
+ * The watch's live BG value must not carry the delta of an older 5-minute APS bucket.
+ * Compare it with the closest valid sample from the same sensor approximately five minutes ago.
+ */
+internal fun rawWearDelta(latest: GV, history: List<GV>): Double? {
+    val target = latest.timestamp - T.mins(5).msecs()
+    val previous = history.asSequence()
+        .filter { it.isValid && it.sourceSensor == latest.sourceSensor && it.timestamp < latest.timestamp }
+        .minByOrNull { abs(it.timestamp - target) }
+        ?: return null
+    return if (abs(previous.timestamp - target) <= T.mins(1).msecs()) latest.value - previous.value else null
+}
 
 @SingleIn(AppScope::class)
 @Inject
@@ -1246,6 +1260,44 @@ class DataHandlerMobile(
     private fun sendQuickWizardListToWear() =
         sendToWear(EventData.QuickWizard(ArrayList(quickWizard.list().filter { e -> e.forDevice(QuickWizardEntry.DEVICE_WATCH) }.map { e -> e.toWear() })))
 
+
+    /**
+     * A lightweight, display-only update on every persisted CGM reading.
+     *
+     * This intentionally bypasses the 5-minute autosens bucket for the watch's displayed
+     * glucose/time/arrow. It does NOT change the data used by the loop or the watch's bolus
+     * wizard, whose inputs are still calculated from ads.actualBg() on the phone.
+     * GraphData and Status are still sent by the normal debounced full resend.
+     */
+    suspend fun sendCurrentBgToWear() {
+        if (!config.appInitialized) return
+
+        val raw = persistenceLayer.getLastGlucoseValue()?.takeIf { it.isValid }
+        if (raw == null) {
+            // No valid sensor reading yet: keep the old safe fallback.
+            iobCobCalculator.ads.lastBg()?.let { sendToWear(getSingleBG(it)) }
+            return
+        }
+
+        val units = profileFunction.getUnits()
+        val lowLine = profileUtil.convertToMgdl(preferences.get(UnitDoubleKey.OverviewLowMark), units)
+        val highLine = profileUtil.convertToMgdl(preferences.get(UnitDoubleKey.OverviewHighMark), units)
+        val history = persistenceLayer.getBgReadingsDataFromTimeToTime(
+            raw.timestamp - T.mins(6).msecs(),
+            raw.timestamp - T.mins(4).msecs(),
+            ascending = false
+        )
+        val deltaMgdl = rawWearDelta(raw, history)
+        val rawBg = InMemoryGlucoseValue.fromGv(raw)
+        // Passing null deliberately prevents mixing the new sensor BG with cached bucket deltas.
+        val payload = buildSingleBg(rawBg, null, units, lowLine, highLine, raw.trendArrow.symbol).copy(
+            delta = deltaMgdl?.let { deltaString(it, it * Constants.MGDL_TO_MMOLL, units) } ?: "--",
+            deltaDetailed = deltaMgdl?.let { deltaStringDetailed(it, it * Constants.MGDL_TO_MMOLL, units) } ?: "--",
+            deltaMgdl = deltaMgdl
+        )
+        sendToWear(payload)
+    }
+
     suspend fun resendData(from: String) {
         aapsLogger.debug(LTag.WEAR, "Sending data to wear from $from")
         // Wear can request a resend before MainApp's init scope has populated pluginStore.plugins
@@ -1255,8 +1307,8 @@ class DataHandlerMobile(
             aapsLogger.debug(LTag.WEAR, "Skipping resendData — app not yet initialized")
             return
         }
-        // SingleBg
-        iobCobCalculator.ads.lastBg()?.let { sendToWear(getSingleBG(it)) }
+        // SingleBg: use the same newest persisted sensor reading as the overview circle.
+        sendCurrentBgToWear()
         // Preferences
         sendToWear(
             EventData.Preferences(
