@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Watch
+import app.aaps.core.data.model.GV
 import app.aaps.core.data.model.RM
 import app.aaps.core.data.model.TT
 import app.aaps.core.data.plugin.PluginType
@@ -66,6 +67,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChangedBy
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
@@ -175,6 +178,18 @@ class WearPlugin(
             dataHandlerMobile.resendData("PreferenceChange")
             checkCustomWatchfacePreferences()
         }
+
+        // The 5-minute calculation/loop events below still drive the complete graph/status resend.
+        // Independently push just the newest sensor BG after each database change so the watchface
+        // and glucose complications need not wait for the next autosens bucket.
+        // distinctUntilChangedBy filters metadata-only NS id writes and duplicate notifications.
+        persistenceLayer.observeChanges<GV>()
+            .map { persistenceLayer.getLastGlucoseValue()?.takeIf { it.isValid } }
+            .filterNotNull()
+            .distinctUntilChangedBy { Triple(it.timestamp, it.value, it.trendArrow) }
+            .collectResilient(newScope, aapsLogger, LTag.WEAR) {
+                dataHandlerMobile.sendCurrentBgToWear()
+            }
         resendRequests(newScope)
             .collectResilient(newScope, aapsLogger, LTag.WEAR) { reason -> dataHandlerMobile.resendData(reason) }
         // Refresh wear scene tile whenever the scene list changes (add / update / delete). The
