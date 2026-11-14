@@ -24,6 +24,11 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import java.io.InputStream
 import java.io.OutputStream
 
+/** Equal timestamps are accepted because a sensor may correct a value in place. */
+internal fun shouldAcceptWearBg(currentTimestamp: Long, incomingTimestamp: Long): Boolean =
+    incomingTimestamp >= currentTimestamp
+
+
 /**
  * Repository for complication data using DataStore with Protocol Buffers
  *
@@ -77,9 +82,14 @@ class ComplicationDataRepository(
         try {
             dataStore.updateData { current ->
                 when (singleBg.dataset) {
-                    0 -> current.copy(bgData = singleBg, lastUpdateTimestamp = System.currentTimeMillis())
-                    1 -> current.copy(bgData1 = singleBg, lastUpdateTimestamp = System.currentTimeMillis())
-                    2 -> current.copy(bgData2 = singleBg, lastUpdateTimestamp = System.currentTimeMillis())
+                    // A debounced full resend and a live-BG push may race. Never replace a
+                    // newer displayed reading with an older in-flight packet from either path.
+                    0 -> if (shouldAcceptWearBg(current.bgData.timeStamp, singleBg.timeStamp))
+                        current.copy(bgData = singleBg, lastUpdateTimestamp = System.currentTimeMillis()) else current
+                    1 -> if (shouldAcceptWearBg(current.bgData1.timeStamp, singleBg.timeStamp))
+                        current.copy(bgData1 = singleBg, lastUpdateTimestamp = System.currentTimeMillis()) else current
+                    2 -> if (shouldAcceptWearBg(current.bgData2.timeStamp, singleBg.timeStamp))
+                        current.copy(bgData2 = singleBg, lastUpdateTimestamp = System.currentTimeMillis()) else current
                     else -> {
                         aapsLogger.warn(LTag.WEAR, "Unknown BG dataset ${singleBg.dataset}, ignoring")
                         current
