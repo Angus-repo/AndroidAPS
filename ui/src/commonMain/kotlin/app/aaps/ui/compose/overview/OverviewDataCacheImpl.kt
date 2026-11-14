@@ -97,6 +97,7 @@ import app.aaps.core.objects.extensions.convertedToAbsolute
 import app.aaps.core.objects.extensions.fromGv
 import app.aaps.core.objects.profile.ProfileSealed
 import app.aaps.core.ui.CoreUiStrings
+import app.aaps.core.ui.extensions.directionToDescription
 import app.aaps.ui.UiStrings
 import dev.zacsweers.metro.Assisted
 import dev.zacsweers.metro.AssistedInject
@@ -147,6 +148,29 @@ private const val WARN_BATTERY_PERCENT = 30.0
 private const val URGENT_BATTERY_PERCENT = 20.0
 private const val WARN_BATTERY_VOLTAGE = 1.35
 private const val URGENT_BATTERY_VOLTAGE = 1.3
+
+/**
+ * The overview circle is a display-only consumer. Show the newest persisted sensor reading even
+ * between 5-minute buckets; loop, wizard and autosens still consume their existing bucketed data.
+ * Fall back to the bucket only when there is no valid raw reading.
+ */
+internal fun overviewDisplayBg(latestRaw: GV?, bucketed: InMemoryGlucoseValue?): InMemoryGlucoseValue? =
+    latestRaw?.takeIf { it.isValid }?.let { InMemoryGlucoseValue.fromGv(it) } ?: bucketed
+
+/**
+ * The number under the circle is a change over approximately five minutes. Do not mix a fresh
+ * 1-minute BG with the delta from the older loop bucket. Ignore other sensors, invalid records and
+ * gaps where there is no sample within one minute of the target five-minute-old timestamp.
+ */
+internal fun rawOverviewDelta(latestRaw: GV, earlier: List<GV>): Double? {
+    val target = latestRaw.timestamp - T.mins(5).msecs()
+    val previous = earlier
+        .asSequence()
+        .filter { it.isValid && it.sourceSensor == latestRaw.sourceSensor && it.timestamp < latestRaw.timestamp }
+        .minByOrNull { abs(it.timestamp - target) }
+        ?: return null
+    return if (abs(previous.timestamp - target) <= T.mins(1).msecs()) latestRaw.value - previous.value else null
+}
 
 /**
  * What a tap on a therapy event in the graph shows.
@@ -595,9 +619,10 @@ class OverviewDataCacheImpl(
         staleBgTransitionJob?.cancel()
         staleBgTransitionJob = null
 
-        // Use bucketed (smoothed) data like legacy, with raw DB fallback
-        val lastBg = iobCobCalculator.ads.bucketedData?.firstOrNull()
-        val lastGv = lastBg ?: persistenceLayer.getLastGlucoseValue()?.let { InMemoryGlucoseValue.fromGv(it) }
+        // The overview is informational: keep its BG/time current without changing the 5-minute
+        // bucket used by the loop, COB, autosens, wizard or wear integration.
+        val latestRaw = persistenceLayer.getLastGlucoseValue()?.takeIf { it.isValid }
+        val lastGv = overviewDisplayBg(latestRaw, iobCobCalculator.ads.bucketedData?.firstOrNull())
         if (lastGv == null) {
             _bgInfoFlow.value = null
             return
@@ -615,9 +640,23 @@ class OverviewDataCacheImpl(
         }
 
         val isOutdated = lastGv.timestamp < dateUtil.now() - T.mins(Constants.OLD_BG_MINUTES).msecs()
-        val trendArrow = trendCalculator.getTrendArrow(iobCobCalculator.ads)
-        val trendDescription = trendCalculator.getTrendDescription(iobCobCalculator.ads)
-        val glucoseStatus = glucoseStatusProvider.glucoseStatusData
+        // Keep the displayed arrow and delta on the same raw sensor timeline as the BG number.
+        // If a source does not report an arrow, do not substitute the bucketed (older) arrow.
+        val trendArrow = latestRaw?.trendArrow ?: trendCalculator.getTrendArrow(iobCobCalculator.ads)
+        val trendDescription = if (latestRaw != null) rh.gs(trendArrow.directionToDescription())
+        else trendCalculator.getTrendDescription(iobCobCalculator.ads)
+        val rawDelta = latestRaw?.let { latest ->
+            rawOverviewDelta(
+                latest,
+                persistenceLayer.getBgReadingsDataFromTimeToTime(
+                    latest.timestamp - T.mins(6).msecs(),
+                    latest.timestamp - T.mins(4).msecs(),
+                    ascending = false
+                )
+            )
+        }
+        val glucoseStatus = if (latestRaw == null) glucoseStatusProvider.glucoseStatusData else null
+        val displayDelta = rawDelta ?: glucoseStatus?.delta
 
         _bgInfoFlow.value = BgInfoData(
             bgValue = valueInUnits,
@@ -627,8 +666,8 @@ class OverviewDataCacheImpl(
             timestamp = lastGv.timestamp,
             trendArrow = trendArrow,
             trendDescription = trendDescription,
-            delta = glucoseStatus?.let { profileUtil.fromMgdlToUnits(it.delta) },
-            deltaText = glucoseStatus?.let { profileUtil.fromMgdlToSignedStringInUnits(it.delta) },
+            delta = displayDelta?.let { profileUtil.fromMgdlToUnits(it) },
+            deltaText = displayDelta?.let { profileUtil.fromMgdlToSignedStringInUnits(it) },
             shortAvgDelta = glucoseStatus?.let { profileUtil.fromMgdlToUnits(it.shortAvgDelta) },
             shortAvgDeltaText = glucoseStatus?.let { profileUtil.fromMgdlToSignedStringInUnits(it.shortAvgDelta) },
             longAvgDelta = glucoseStatus?.let { profileUtil.fromMgdlToUnits(it.longAvgDelta) },
