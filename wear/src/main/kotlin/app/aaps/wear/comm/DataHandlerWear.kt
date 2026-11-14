@@ -211,23 +211,20 @@ class DataHandlerWear(
             dataStoreScope.launch {
                 complicationDataRepository.updateStatusData(it)
 
-                // The one complication refresh of a sync, AFTER the DataStore write. Status is the last
-                // data message of a resend and SingleBg is only ever sent inside one, so refreshing here
-                // covers both; refreshing on SingleBg too rebuilt all 23 complications twice per sync.
+                // A full resend's Status follows SingleBg, and refreshes every complication.
+                // The separate live-BG path refreshes only glucose complications to save power.
                 triggerComplicationUpdates()
+                LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(DataLayerListenerServiceWear.INTENT_NEW_DATA))
             }
-            LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(DataLayerListenerServiceWear.INTENT_NEW_DATA))
         }
         onEvent<EventData.SingleBg>(detail = { " dataset=${it.dataset} sgv=${it.sgvString} arrow=${it.slopeArrow}" }) {
-            // Store in DataStore - supports all datasets (0, 1, 2)
             dataStoreScope.launch {
+                // Finish the DataStore write before notifying renderers or complication providers.
                 complicationDataRepository.updateBgData(it)
-                // Complications are refreshed once, on Status (see above); the graph tile draws from
-                // the BG data alone, so it refreshes here.
+                triggerGlucoseComplicationUpdates()
                 TileService.getUpdater(context).requestUpdate(BgGraphTileService::class.java)
+                LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(DataLayerListenerServiceWear.INTENT_NEW_DATA))
             }
-
-            LocalBroadcastManager.getInstance(context).sendBroadcast(Intent(DataLayerListenerServiceWear.INTENT_NEW_DATA))
         }
         onEvent<EventData.GraphData> {
             // Store in DataStore
@@ -444,6 +441,31 @@ class DataHandlerWear(
             SystemClock.sleep(seconds * 1000L)
             NotificationManagerCompat.from(context).cancel(DataLayerListenerServiceWear.BOLUS_PROGRESS_NOTIF_ID)
         }.start()
+    }
+
+
+    /**
+     * Live CGM readings arrive separately from Status once a minute. Updating only the
+     * glucose-dependent providers avoids rebuilding the IOB/COB/basal complications for
+     * every one-minute sample. The full Status resend still refreshes all providers.
+     */
+    private fun triggerGlucoseComplicationUpdates() {
+        val glucoseComplications = listOf(
+            SgvComplication::class.java,
+            SgvComplicationExt1::class.java,
+            SgvComplicationExt2::class.java,
+            SgvLargeComplication::class.java,
+            CwfAmbientBgComplication::class.java,
+            LongStatusComplication::class.java,
+            LongStatusFlippedComplication::class.java
+        )
+        for (complicationClass in glucoseComplications) {
+            try {
+                ComplicationDataSourceUpdateRequester.create(context, ComponentName(context, complicationClass)).requestUpdateAll()
+            } catch (e: Exception) {
+                aapsLogger.error(LTag.WEAR, "Failed to refresh live BG complication: ${complicationClass.simpleName}", e)
+            }
+        }
     }
 
     /**
